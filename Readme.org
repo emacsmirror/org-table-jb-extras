@@ -1,0 +1,55 @@
+* Library Information
+ /org-table-jb-extras.el/ --- Extra commands & functions for working with org-tables
+
+ - Filename :: [[file:org-table-jb-extras.el][org-table-jb-extras.el]]
+ - Description :: Extra commands & functions for working with org-tables
+ - Author :: Joe Bloggs <vapniks@yahoo.com>
+ - Maintainer :: Joe Bloggs <vapniks@yahoo.com>
+Copyleft (Ↄ) 2024, Joe Bloggs, all rites reversed.
+ - Created :: 2024-05-23 22:44:11
+ - Version :: 20240523.2317
+ - Last-Updated :: Thu May 23 23:17:48 2024
+ -           By :: Joe Bloggs
+ -     Update # :: 1
+ - URL :: https://github.com/vapniks/org-table-jb-extras
+ - Keywords :: tools 
+ - Compatibility :: GNU Emacs 25.2.2
+ - Package-Requires :: ((org-mode "9.4.6") (cl-lib "1") (ido-choose-function "0.1"))
+
+* Possible Dependencies
+
+org-mode cl-lib ido-choose-function
+
+* Commentary
+
+When `org-table-dispatch' is called while point is in an org-table an ido menu of possible
+actions from `org-table-dispatch-actions' is offered to the user. These actions include:
+"copy table", "copy rectangle", "kill/clear cells", "export to file", "copy cols to calc",
+"plot graph", "fit curve to cols", "transpose table", "split/join columns", "join rows/flatten columns",
+"toggle display of row/column refs". For more details see the documentation of the functions
+listed in `org-table-dispatch-actions'.
+
+* Commands & keybindings
+
+ Below is a complete list of commands:
+
+   - *org-table-flatten-columns* :
+    Apply FN to next NROWS cells in selected columns and replace cells in current row with results.\\
+    Keybinding: =M-x org-table-flatten-columns=
+   - *org-table-dispatch* :
+    Do something with column(s) of org-table at point.\\
+    Keybinding: =M-x org-table-dispatch=
+
+* Customizable Options
+
+ Below is a list of customizable options:
+
+   - *org-table-flatten-functions* :
+    Alist of (NAME . FUNCTION) pairs for use with  - *org-table-flatten-column* :.\\
+    default value: =(quote (("append" lambda ... ... ...) ("prepend" lambda ... ... ...) ("sum" lambda ... ...) ("mean" lambda ... ...) ("max" lambda ... ...) ...))=
+   - *org-table-graph-types* :
+    List of graph types for  - *org-plot/gnuplot* :.\\
+    default value: =nil=
+   - *org-table-dispatch-actions* :
+    Actions that can be applied when  - *org-table-dispatch* : is called.\\
+    default value: =(quote (("copy table" lambda ... ...) ("copy rectangle" lambda ... ...) ("kill/clear cells" lambda ... ...) ("export to file" lambda ... ...) ("copy cols to calc" lambda ... ...) ...))=
