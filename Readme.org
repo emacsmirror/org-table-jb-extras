@@ -46,10 +46,8 @@ listed in `org-table-dispatch-actions'.
 
    - *org-table-flatten-functions* :
     Alist of (NAME . FUNCTION) pairs for use with  - *org-table-flatten-column* :.\\
-    default value: =(quote (("append" lambda ... ... ...) ("prepend" lambda ... ... ...) ("sum" lambda ... ...) ("mean" lambda ... ...) ("max" lambda ... ...) ...))=
    - *org-table-graph-types* :
     List of graph types for  - *org-plot/gnuplot* :.\\
-    default value: =nil=
    - *org-table-dispatch-actions* :
     Actions that can be applied when  - *org-table-dispatch* : is called.\\
-    default value: =(quote (("copy table" lambda ... ...) ("copy rectangle" lambda ... ...) ("kill/clear cells" lambda ... ...) ("export to file" lambda ... ...) ("copy cols to calc" lambda ... ...) ...))=
+
