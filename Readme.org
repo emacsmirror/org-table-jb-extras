@@ -14,7 +14,7 @@ Copyleft (Ↄ) 2024, Joe Bloggs, all rites reversed.
  - URL :: https://github.com/vapniks/org-table-jb-extras
  - Keywords :: tools 
  - Compatibility :: GNU Emacs 25.2.2
- - Package-Requires :: ((org-mode "9.4.6") (cl-lib "1") (ido-choose-function "0.1"))
+ - Package-Requires :: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1"))
 
 * Possible Dependencies
 

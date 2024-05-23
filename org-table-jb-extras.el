@@ -13,11 +13,11 @@
 ;; URL: https://github.com/vapniks/org-table-jb-extras
 ;; Keywords: tools 
 ;; Compatibility: GNU Emacs 25.2.2
-;; Package-Requires: ((org-mode "9.4.6") (cl-lib "1") (ido-choose-function "0.1"))
+;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1"))
 ;;
 ;; Features that might be required by this library:
 ;;
-;; org-mode cl-lib ido-choose-function
+;; org cl-lib ido-choose-function
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -68,14 +68,10 @@
 ;;
 ;;  `org-table-flatten-functions'
 ;;    Alist of (NAME . FUNCTION) pairs for use with `org-table-flatten-column'.
-;;    default = (quote (("append" lambda ... ... ...) ("prepend" lambda ... ... ...) ("sum" lambda ... ...) ("mean" lambda ... ...) ("max" lambda ... ...) ...))
 ;;  `org-table-graph-types'
 ;;    List of graph types for `org-plot/gnuplot'.
-;;    default = nil
 ;;  `org-table-dispatch-actions'
 ;;    Actions that can be applied when `org-table-dispatch' is called.
-;;    default = (quote (("copy table" lambda ... ...) ("copy rectangle" lambda ... ...) ("kill/clear cells" lambda ... ...) ("export to file" lambda ... ...) ("copy cols to calc" lambda ... ...) ...))
-
 ;;
 ;; All of the above can be customized by:
 ;;      M-x customize-group RET org-table RET
