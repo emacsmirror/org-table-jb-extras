@@ -484,9 +484,10 @@
 					("join rows/flatten columns" .
 					 (lambda nil (call-interactively 'org-table-flatten-columns)))
 					("Toggle display of row/column refs" .
-					 (lambda nil (org-table-toggle-coordinate-overlays))))
+					 (lambda nil (org-table-toggle-coordinate-overlays)))
+					("Hide/show column" . (lambda nil (call-interactively 'org-table-toggle-column-width))))
   "Actions that can be applied when `org-table-dispatch' is called.
-  Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
+Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function of zero or one arguments. If FUNC has one argument then a list containing 
   columns of data returned by `org-table-graph-columns' will be passed in.
   If the NAME contains the string \"kill\" then the selected columns will be deleted from the table."
@@ -533,6 +534,15 @@
   (interactive)
   (kill-new (replace-regexp-in-string " +$" "" (replace-regexp-in-string "^ +" "" (org-table-get-field))))
   (org-table-blank-field))
+
+;;;###autoload
+;; (defun org-table-narrow-column (width)
+;;   "Make column of org-table at point narrower by moving text into new rows.
+;; WIDTH is the width in chars after narrowing, and should be a positive integer
+;; less than the current width."
+;;   (let ((tbl (org-table-to-lisp)))
+;;     )
+;;   )
 
 (provide 'org-table-jb-extras)
 
