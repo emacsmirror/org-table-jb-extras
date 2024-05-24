@@ -478,19 +478,16 @@
 					("fit curve to cols" .
 					 (lambda (lst) (org-table-to-calc (org-table-transpose lst) nil)
 					   (calc-curve-fit nil)))
-					("transpose table" . (lambda nil (org-table-transpose-table-at-point)))
-					("split/join columns" .
-					 (lambda nil (call-interactively 'org-table-insert-or-delete-vline)))
-					("join rows/flatten columns" .
-					 (lambda nil (call-interactively 'org-table-flatten-columns)))
-					("Toggle display of row/column refs" .
-					 (lambda nil (org-table-toggle-coordinate-overlays)))
-					("Hide/show column" . (lambda nil (call-interactively 'org-table-toggle-column-width))))
+					("transpose table" . org-table-transpose-table-at-point)
+					("split/join columns" . org-table-insert-or-delete-vline)
+					("join rows/flatten columns" . org-table-flatten-columns)
+					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
+					("Hide/show column" . org-table-toggle-column-width))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
-  and FUNC is a function of zero or one arguments. If FUNC has one argument then a list containing 
-  columns of data returned by `org-table-graph-columns' will be passed in.
-  If the NAME contains the string \"kill\" then the selected columns will be deleted from the table."
+  and FUNC is a function with no non-optional args, or a lambda function of one argument. 
+  If the latter case columns of data returned by `org-table-graph-columns' will be passed in as the argument,
+  and if the NAME contains the string \"kill\" then the selected columns will be deleted from the table."
   :group 'org-table
   :type '(alist :key-type string :value-type (function :tag "Function acting on list of lists")))
 
@@ -498,19 +495,21 @@ Each element should be of the form (NAME . FUNC) where NAME is a name for the ac
 ;;;###autoload
 (defun org-table-dispatch nil
   "Do something with column(s) of org-table at point.
-  Prompt the user for an action in `org-table-dispatch-actions' and apply the corresponding function.
+Prompt the user for an action in `org-table-dispatch-actions' and apply the corresponding function.
   If the function takes a single argument then pass in a subtable list obtained from `org-table-grab-columns'.
   If in addition, the name of the action contains the word \"kill\" then the cells in the selected columns/region 
   will be cleared."
   (interactive)
-  (let ((pair (assoc (ido-completing-read "Action: " (mapcar 'car org-table-dispatch-actions))
-		     org-table-dispatch-actions)))
-    (if (= (length (caddr pair)) 1)
-	(funcall (cdr pair) (org-table-grab-columns (if (region-active-p) (region-beginning))
-						    (if (region-active-p) (region-end))
-						    current-prefix-arg
-						    (string-match "\\<kill\\>" (car pair))))
-      (funcall (cdr pair)))))
+  (let* ((pair (assoc (ido-completing-read "Action: " (mapcar 'car org-table-dispatch-actions))
+		      org-table-dispatch-actions))
+	 (func (cdr pair)))
+    (if (and (listp func)
+	     (= (length (cadr func)) 1))
+	(funcall func (org-table-grab-columns (if (region-active-p) (region-beginning))
+					      (if (region-active-p) (region-end))
+					      current-prefix-arg
+					      (string-match "\\<kill\\>" (car pair))))
+      (funcall func))))
 
 
 ;; Insert a file and convert it to an org table
