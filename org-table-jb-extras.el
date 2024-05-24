@@ -57,10 +57,14 @@
 ;;
 ;;  `org-table-flatten-columns'
 ;;    Apply FN to next NROWS cells in selected columns and replace cells in current row with results.
-;;    Keybinding: M-x org-table-flatten-columns
 ;;  `org-table-dispatch'
 ;;    Do something with column(s) of org-table at point.
-;;    Keybinding: M-x org-table-dispatch
+;;  `insert-file-as-org-table'
+;;   Insert a file into the current buffer at point, and convert it to an org table.
+;;  `org-table-kill-field'
+;;    Kill the org-table field under point.
+;;  `org-table-copy-field'
+;;    Copy the org-table field under point to the kill ring.
 ;;
 ;;; Customizable Options:
 ;;
@@ -508,6 +512,27 @@
       (funcall (cdr pair)))))
 
 
+;; Insert a file and convert it to an org table
+;;# (message "insert-file-as-org-table")
+(defun insert-file-as-org-table (filename)
+  "Insert a file into the current buffer at point, and convert it to an org table."
+  (interactive (list (ido-read-file-name "csv file: ")))
+  (let* ((start (point))
+	 (end (+ start (nth 1 (insert-file-contents filename)))))
+    (org-table-convert-region start end)))
+
+;;;###autoload
+(defun org-table-copy-field nil
+  "Copy the org-table field under point to the kill ring."
+  (interactive)
+  (kill-new (replace-regexp-in-string " +$" "" (replace-regexp-in-string "^ +" "" (org-table-get-field)))))
+
+;;;###autoload
+(defun org-table-kill-field nil
+  "Kill the org-table field under point."
+  (interactive)
+  (kill-new (replace-regexp-in-string " +$" "" (replace-regexp-in-string "^ +" "" (org-table-get-field))))
+  (org-table-blank-field))
 
 (provide 'org-table-jb-extras)
 
