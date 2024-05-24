@@ -35,15 +35,13 @@ listed in `org-table-dispatch-actions'.
 
   - *org-table-flatten-columns* :
     Apply FN to next NROWS cells in selected columns and replace cells in current row with results.\\
-    Keybinding: =M-x org-table-flatten-columns=
   - *org-table-dispatch* :
     Do something with column(s) of org-table at point.\\
-    Keybinding: =M-x org-table-dispatch=
   - *insert-file-as-org-table* :
      Insert a file into the current buffer at point, and convert it to an org table.\\
   - *org-table-kill-field* :
      Kill the org-table field under point.\\
-  - *org-table-copy-field*
+  - *org-table-copy-field* :
      Copy the org-table field under point to the kill ring.
 
 * Customizable Options
