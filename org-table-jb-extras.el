@@ -139,7 +139,6 @@
       (org-table-insert-vline (- endn thisn))))
   (org-table-align))
 
-;;;###autoload
 (defun org-table-insert-vline (len)
   "Insert a vertical line of length LEN starting at point.
   If LEN is negative the line goes upwards, otherwise it goes downwards."
@@ -157,7 +156,6 @@
 	    (string-rectangle start end "|")
 	  (string-rectangle end (if (< diff 0) (- start diff) start) "|"))))))
 
-;;;###autoload
 (defun org-table-delete-vline nil
   "Delete the vertical line in the current column (if any)."
   (let ((col (current-column))
@@ -194,7 +192,6 @@
   :group 'org-table
   :type 'alist)
 
-;;;###autoload
 (defun org-table-flatten-column (nrows fn)
   "Replace current cell with results of applying FN to NROWS cells under, and including, current one.
   If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
@@ -521,6 +518,7 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 
 ;; Insert a file and convert it to an org table
 ;;# (message "insert-file-as-org-table")
+;;;###autoload
 (defun insert-file-as-org-table (filename)
   "Insert a file into the current buffer at point, and convert it to an org table."
   (interactive (list (ido-read-file-name "csv file: ")))
@@ -602,6 +600,20 @@ is used interactively, copy the content of cells in other columns into the new r
       (org-table-align)
       (org-table-goto-line (car curpos))
       (org-table-goto-column (cdr curpos)))))
+
+(defun org-table-get-column-widths (&optional tbl)
+  "Return the widths of columns in an org table.
+Optional arg TBL is a list containing the table as returned by `org-table-to-lisp',
+if this is nil then it will be calculated using `org-table-to-lisp'."
+  (let ((table (or tbl (org-table-to-lisp)))
+        (widths nil))
+    (dolist (row table)
+      (unless (eq row 'hline)
+        (setq widths
+              (cl-mapcar (lambda (x y) (max x (length y)))
+			 (or widths (make-list (length row) 0))
+			 row))))
+    widths))
 
 (provide 'org-table-jb-extras)
 
