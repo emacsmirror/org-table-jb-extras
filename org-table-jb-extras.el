@@ -489,7 +489,8 @@
 					("join rows/flatten columns" . org-table-flatten-columns)
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
 					("Hide/show column" . org-table-toggle-column-width)
-					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column))))
+					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
+					("Insert vertical line" . org-table-insert-or-delete-vline))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -601,8 +602,6 @@ is used interactively, copy the content of cells in other columns into the new r
       (org-table-align)
       (org-table-goto-line (car curpos))
       (org-table-goto-column (cdr curpos)))))
-
-
 
 (provide 'org-table-jb-extras)
 
