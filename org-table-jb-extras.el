@@ -65,7 +65,8 @@
 ;;    Kill the org-table field under point.
 ;;  `org-table-copy-field'
 ;;    Copy the org-table field under point to the kill ring.
-;;
+;;  `org-table-narrow-column'
+;;    Split the current column of an org-mode table to be WIDTH characters wide.
 ;;; Customizable Options:
 ;;
 ;; Below is a list of customizable options:
@@ -482,7 +483,8 @@
 					("split/join columns" . org-table-insert-or-delete-vline)
 					("join rows/flatten columns" . org-table-flatten-columns)
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
-					("Hide/show column" . org-table-toggle-column-width))
+					("Hide/show column" . org-table-toggle-column-width)
+					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column))))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -511,7 +513,6 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 					      (string-match "\\<kill\\>" (car pair))))
       (funcall func))))
 
-
 ;; Insert a file and convert it to an org table
 ;;# (message "insert-file-as-org-table")
 (defun insert-file-as-org-table (filename)
@@ -535,13 +536,66 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
   (org-table-blank-field))
 
 ;;;###autoload
-;; (defun org-table-narrow-column (width)
-;;   "Make column of org-table at point narrower by moving text into new rows.
-;; WIDTH is the width in chars after narrowing, and should be a positive integer
-;; less than the current width."
-;;   (let ((tbl (org-table-to-lisp)))
-;;     )
-;;   )
+(defun org-table-narrow-column (width &optional arg)
+  "Split the current column of an org-mode table to be WIDTH characters wide.
+If a cell's content exceeds WIDTH, split it into multiple rows.
+If ARG is nil, copy text in other columns to the new rows.
+If ARG is the symbol 'hline, or a single prefix is used interactively, make new rows
+ (except the first one of each group) empty apart from the cell in the current column, 
+and put a horizontal line between each group. If ARG is the symbol 'copy, or a double prefix
+is used interactively, copy the content of cells in other columns into the new rows."
+  (interactive (list (read-number "New column width: ")
+		     (cond ((equal current-prefix-arg '(16))
+			    'copy)
+			   (current-prefix-arg 'hlines))))
+  (unless (org-at-table-p) (error "Not in an org-mode table"))
+  (let* ((col (org-table-current-column))
+         (rows (org-table-to-lisp))
+         (new-rows '())
+         (copy-other-columns (equal arg 'copy))
+	 (curpos (cons (org-table-current-line) col)))
+    (dolist (row rows)
+      (if (eq row 'hline)
+          (push row new-rows)
+        (let ((cell (nth (1- col) row)))
+          (if (> (length cell) width)
+              (let ((words (split-string cell " "))
+                    (line "")
+                    (parts '()))
+                (dolist (word words)
+                  (if (> (+ (length line) (length word) 1) width)
+                      (progn (push line parts)
+			     (setq line word))
+                    (setq line (if (string= line "") word (concat line " " word)))))
+                (when (not (string= line "")) (push line parts))
+                (setq parts (nreverse parts))
+                ;; Process the first part with the original row content
+                (let ((new-row (copy-sequence row)))
+                  (setf (nth (1- col) new-row) (pop parts))
+                  (push new-row new-rows))
+                ;; Process the remaining parts
+                (dolist (part parts)
+                  (let ((new-row (if copy-other-columns
+                                     (copy-sequence row)
+                                   (make-list (length row) ""))))
+                    (setf (nth (1- col) new-row) part)
+                    (push new-row new-rows))))
+            (push row new-rows))
+          ;; Add horizontal line if single prefix argument is used
+          (when (equal arg 'hlines) (push 'hline new-rows)))))
+    (setq new-rows (nreverse new-rows))
+    (org-table-align)
+    (let ((start (org-table-begin))
+          (end (org-table-end)))
+      (delete-region start end)
+      (goto-char start)
+      (dolist (row new-rows)
+        (if (eq row 'hline)
+            (insert "|-\n")
+          (insert "| " (mapconcat 'identity row " | ") " |\n")))
+      (org-table-align)
+      (org-table-goto-line (car curpos))
+      (org-table-goto-column (cdr curpos)))))
 
 (provide 'org-table-jb-extras)
 
