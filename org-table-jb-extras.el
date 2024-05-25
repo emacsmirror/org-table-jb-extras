@@ -55,6 +55,10 @@
 ;;
 ;; Below is a complete list of commands:
 ;;
+;;  `org-table-insert-or-delete-vline'
+;;    Insert a vertical line in the current column, or delete some if NDELETE is non-nil.
+;;  `org-table-grab-columns'
+;;    Copy/kill columns or region of table and return as list(s).
 ;;  `org-table-flatten-columns'
 ;;    Apply FN to next NROWS cells in selected columns and replace cells in current row with results.
 ;;  `org-table-dispatch'
@@ -67,6 +71,7 @@
 ;;    Copy the org-table field under point to the kill ring.
 ;;  `org-table-narrow-column'
 ;;    Split the current column of an org-mode table to be WIDTH characters wide.
+;;
 ;;; Customizable Options:
 ;;
 ;; Below is a list of customizable options:
@@ -596,6 +601,8 @@ is used interactively, copy the content of cells in other columns into the new r
       (org-table-align)
       (org-table-goto-line (car curpos))
       (org-table-goto-column (cdr curpos)))))
+
+
 
 (provide 'org-table-jb-extras)
 

@@ -33,16 +33,22 @@ listed in `org-table-dispatch-actions'.
 
  Below is a complete list of commands:
 
+  - *org-table-insert-or-delete-vline*
+      Insert a vertical line in the current column, or delete some if NDELETE is non-nil.
+  - *org-table-grab-columns*
+     Copy/kill columns or region of table and return as list(s).
   - *org-table-flatten-columns* :
-    Apply FN to next NROWS cells in selected columns and replace cells in current row with results.\\
+     Apply FN to next NROWS cells in selected columns and replace cells in current row with results.\\
   - *org-table-dispatch* :
-    Do something with column(s) of org-table at point.\\
+     Do something with column(s) of org-table at point.\\
   - *insert-file-as-org-table* :
      Insert a file into the current buffer at point, and convert it to an org table.\\
   - *org-table-kill-field* :
      Kill the org-table field under point.\\
   - *org-table-copy-field* :
-     Copy the org-table field under point to the kill ring.
+     Copy the org-table field under point to the kill ring.\\
+  - *org-table-narrow-column*
+     Split the current column of an org-mode table to be WIDTH characters wide.
 
 * Customizable Options
 
