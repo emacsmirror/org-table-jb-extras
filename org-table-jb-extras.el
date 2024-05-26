@@ -487,6 +487,8 @@
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
+					("Narrow column with hlines" .
+					 (lambda nil (org-table-narrow-column nil 'hlines)))
 					("Insert vertical line" . org-table-insert-or-delete-vline))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
@@ -542,7 +544,8 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 ;;;###autoload
 (defun org-table-narrow-column (width &optional arg)
   "Split the current column of an org-mode table to be WIDTH characters wide.
-If a cell's content exceeds WIDTH, split it into multiple rows.
+If a cell's content exceeds WIDTH, split it into multiple rows. 
+When called interactively or if WIDTH is nil, the user will be prompted for a width.
 If ARG is nil, copy text in other columns to the new rows.
 If ARG is the symbol 'hline, or a single prefix is used interactively, make new rows
  (except the first one of each group) empty apart from the cell in the current column, 
@@ -553,7 +556,8 @@ is used interactively, copy the content of cells in other columns into the new r
 			    'copy)
 			   (current-prefix-arg 'hlines))))
   (unless (org-at-table-p) (error "Not in an org-mode table"))
-  (let* ((col (org-table-current-column))
+  (let* ((width (or width (read-number "New column width: ")))
+	 (col (org-table-current-column))
          (rows (org-table-to-lisp))
          (new-rows '())
          (copy-other-columns (equal arg 'copy))
@@ -614,6 +618,27 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 			 (or widths (make-list (length row) 0))
 			 row))))
     widths))
+
+;;;###autoload
+;; TODO: `org-table-narrow' will narrow entire table in similar manner to `org-table-narrow-column',
+;; but over multiple columns if necessary.
+;; Add splitcols arg to indicate which columns can have their cell split.
+;; Use chatgpt to help write an emacs dynamic module for interfacing with glpk,
+;; and then use glpk for solving the problem of narrowing an org table (and other problems).
+;; Or use `call-process' to call gplsol to solve the problem.
+;; Alternatively use a greedy algorithm written in elisp (chatgpt isn't smart enough to find this algorithm):
+;; for each column in splitcols check difference between longest and 2nd longest cell, and then choose column which
+;; has the largest such value and add a new row under the longest cell in that column and split the contents
+;; of all other cells (in splitcols columns) in the same row as the longest cell, into the new row.
+;; Keep repeating this until total table width is <= WIDTH arg.
+;; (defun org-table-narrow (width &optional arg)
+;;   "Narrow the entire org-mode table to be within WIDTH characters by adding new rows.
+;; If ARG is nill make cells in new rows empty apart from those that need to be split up due to narrowing.
+;; If ARG is 'copy copy text in cells of columns that aren't narrowed into cells of new rows.
+;; If ARG is 'hline do the same as for when ARG is nil but also put horizontal lines between groups
+;; of rows corresponding to original rows."
+;;   (interactive "nEnter table width: \nP")
+;;   )
 
 (provide 'org-table-jb-extras)
 
