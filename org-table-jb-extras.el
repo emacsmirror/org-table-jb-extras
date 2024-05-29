@@ -244,7 +244,7 @@ If NROWS is a positive integer then the NROWS cells below and including the curr
     nrows))
 
 ;;;###autoload
-;; simple-call-tree-info: CHECK  
+;; simple-call-tree-info: TODO make this more flexible with a regexp argument to select rows to flatten
 (defun org-table-flatten-columns (nrows ncols fn &optional repeat)
   "Apply FN to next NROWS cells in selected columns and replace cells in current row with results.
 If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
@@ -628,7 +628,7 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 		    (if (eq row 'hline)
 			acc
 		      (-zip-with 'max acc (-map 'length row))))
-		  (make-list (length (cl-find-if 'listp table)) 0)
+		  (make-list (org-table-ncols table) 0)
 		  table)))
 
 ;;;###autoload
@@ -661,7 +661,7 @@ sets of rows in the new table corresponding with rows in the original table."
     (unless (org-at-table-p) (error "Not in an org-mode table"))
     (let* ((table (org-table-to-lisp))
 	   (nrows (length table))
-	   (ncols (length (cl-find-if 'listp table)))
+	   (ncols (org-table-ncols table))
 	   (colwidths (org-table-get-column-widths table))
 	   (freecols (-difference (number-sequence 0 (1- ncols)) fixedcols))
 	   (inputstr (mapconcat 'number-to-string ;; input data for AMPL
@@ -784,7 +784,6 @@ not used."
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
 ;; and the width of the table, etc.
-;; TODO: org-table-squash; opposite of org-table-narrow, it joins adjacent rows together
 
 ;;;###autoload
 ;; simple-call-tree-info: DONE  
