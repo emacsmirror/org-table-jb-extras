@@ -1080,7 +1080,8 @@ row     : A list containing all the items in the current row in order, as string
                       if (listp x) nconc (number-sequence (first x) (second x) (third x))
                       else nconc (list x)))
          ;; select the required rows
-         (table2 (if rows3 (delq nil (mapcar (lambda (i) (nth (1- i) table)) rows3)) table))
+         (table2 (if rows3 (-select-by-indices (mapcar '1- rows3) table)
+		   table))
          ;; create the filter
          (filter2 (if filter
                       `(lambda (row)
@@ -1100,7 +1101,8 @@ row     : A list containing all the items in the current row in order, as string
          ;; apply the filter
          (tbllines (remove-if-not filter2 table2)))
     ;; select the required columns
-    (if cols3 (mapcar (lambda (line) (mapcar (lambda (i) (nth (1- i) line)) cols3)) tbllines)
+    (if cols3 (mapcar (lambda (line) (-select-by-indices (mapcar '1- cols3) line))
+		      tbllines)
       tbllines)))
 
 ;; (cl-defun org-table-transform-list (lst &key col row)
