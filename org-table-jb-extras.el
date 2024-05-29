@@ -17,7 +17,7 @@
 ;;
 ;; Features that might be required by this library:
 ;;
-;; org cl-lib ido-choose-function ampl-mode
+;; org cl-lib ido-choose-function ampl-mode 
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -123,12 +123,13 @@
 (require 'ampl-mode nil t) ;; my version which contains `run-ampl-async'
 ;;; Code:
 
-;; REMEMBER TODO ;;;###autoload's 
+;; simple-call-tree-info: CHECK  
 (defvar org-table-vline-delim-regexp "^[[:blank:]]*\\($\\|#\\+\\|\\*[[:blank:]]+\\)"
   "A regular expression used by `org-table-insert-or-delete-vline' for matching 
   lines immediately before or after a table.")
 
 ;;;###autoload
+;; simple-call-tree-info: CHECK  
 (cl-defun org-table-insert-or-delete-vline (&optional ndelete)
   "Insert a vertical line in the current column, or delete some if NDELETE is non-nil.
   If NDELETE is a positive integer, or if called interactively with a positive numeric prefix arg, 
@@ -154,6 +155,7 @@
       (org-table-insert-vline (- endn thisn))))
   (org-table-align))
 
+;; simple-call-tree-info: CHECK  
 (defun org-table-insert-vline (len)
   "Insert a vertical line of length LEN starting at point.
   If LEN is negative the line goes upwards, otherwise it goes downwards."
@@ -171,6 +173,7 @@
 	    (string-rectangle start end "|")
 	  (string-rectangle end (if (< diff 0) (- start diff) start) "|"))))))
 
+;; simple-call-tree-info: CHECK  
 (defun org-table-delete-vline nil
   "Delete the vertical line in the current column (if any)."
   (let ((col (current-column))
@@ -189,6 +192,7 @@
       (delete-extract-rectangle (vlineend start col nil) (vlineend start col t)))))
 
 ;;;###autoload
+;; simple-call-tree-info: CHECK  
 (defcustom org-table-flatten-functions
   '(("append" . (lambda (sep lst)
 		  (interactive (list (read-string "Separator (default \" \"): " nil nil " ") '<>))
@@ -207,9 +211,10 @@
   :group 'org-table
   :type 'alist)
 
+;; simple-call-tree-info: CHECK  
 (defun org-table-flatten-column (nrows fn)
   "Replace current cell with results of applying FN to NROWS cells under, and including, current one.
-  If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
+If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
   If NROWS is a negative integer then the NROWS cells above and including the current one will be used.
   If NROWS is not a number then all cells in the current column between horizontal separator lines will
   be used. Function FN should take a single argument; a list of the contents of the cells. 
@@ -239,18 +244,19 @@
     nrows))
 
 ;;;###autoload
+;; simple-call-tree-info: CHECK  
 (defun org-table-flatten-columns (nrows ncols fn &optional repeat)
   "Apply FN to next NROWS cells in selected columns and replace cells in current row with results.
-  If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
-  If NROWS is a negative integer then the NROWS cells above and including the current one will be used.
-  If NROWS is not a number (e.g. when called interactively with a C-u prefix), then cells between
-  the separator lines above and below the current line will be used.
-  If NCOLS is non-nil then flatten the next NCOLS columns (including the current one), otherwise
-  flatten all columns. 
-  Alternatively, when called interactively, if region is active then that will be used to determine 
-  which cells are used.
-  This function calls `org-table-flatten-column' (which see) on columns in the current row.
-  If REPEAT is supplied then repeat this process REPEAT times."
+If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
+If NROWS is a negative integer then the NROWS cells above and including the current one will be used.
+If NROWS is not a number (e.g. when called interactively with a C-u prefix), then cells between
+the separator lines above and below the current line will be used.
+If NCOLS is non-nil then flatten the next NCOLS columns (including the current one), otherwise
+flatten all columns. 
+Alternatively, when called interactively, if region is active then that will be used to determine 
+which cells are used.
+This function calls `org-table-flatten-column' (which see) on columns in the current row.
+If REPEAT is supplied then repeat this process REPEAT times."
   (interactive (let* ((regionp (region-active-p))
 		      (regionstart (if regionp (region-beginning)))
 		      (regionend (if regionp (region-end))))
@@ -308,6 +314,7 @@
     (org-table-goto-column col)))
 
 ;;;###autoload
+;; simple-call-tree-info: CHECK  is this interactive?
 (cl-defun org-table-grab-columns (top bottom arg &optional kill)
   "Copy/kill columns or region of table and return as list(s).
   The return value is a list of lists - one for each row of the copied/killed data.
@@ -364,6 +371,7 @@
 	  org-table-clip))))
 
 ;;;###autoload
+;; simple-call-tree-info: CHECK  
 (defun org-table-to-calc (lsts &optional unpack)
   "Add data in LSTS to calc as a matrix.
   The lists in LSTS will form the rows of the calc matrix created.
@@ -384,6 +392,7 @@
     (if unpack (calc-unpack nil))))
 
 ;;;###autoload
+;; simple-call-tree-info: CHECK  
 (defun org-table-plot-list (lst)
   (require 'org-plot)
   (let* ((name (ido-completing-read
@@ -466,7 +475,15 @@
     (message "Plotting parameters: %s" params2)))
 
 ;;;###autoload
-(defcustom org-table-graph-types nil
+;; simple-call-tree-info: STARTED  
+(defcustom org-table-graph-types '(("lines in 2D" :plot-type 2d :with lines :ind 1 :set
+				    ("terminal wxt 0"))
+				   ("histogram" :set
+				    ("terminal wxt 0")
+				    :plot-type 2d :with histograms :ind 1 :set
+				    ("terminal wxt 0"))
+				   ("flat grid plot" :plot-type grid :map t)
+				   ("3D plot" :plot-type 3d :with pm3d))
   "List of graph types for `org-plot/gnuplot'.
 
   An assoc-list of (NAME . PLIST) pairs where NAME is the name of the graph type,
@@ -479,6 +496,7 @@
 		       (plist :key-type sexp :value-type sexp))))
 
 ;;;###autoload
+;; simple-call-tree-info: STARTED  
 (defcustom org-table-dispatch-actions '(("copy table" . (lambda (lst) (kill-new (org-table-lisp-to-string lst))))
 					("copy rectangle" . (lambda (lst)
 							      (setq killed-rectangle
@@ -498,7 +516,7 @@
 					   (calc-curve-fit nil)))
 					("transpose table" . org-table-transpose-table-at-point)
 					("split/join columns" . org-table-insert-or-delete-vline)
-					("join rows/flatten columns" . org-table-flatten-columns)
+					("join rows/flatten columns" . (lambda nil (call-interactively 'org-table-flatten-columns)))
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
@@ -508,13 +526,14 @@
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
-  If the latter case columns of data returned by `org-table-graph-columns' will be passed in as the argument,
+  If the latter case columns of data returned by `org-table-grab-columns' will be passed in as the argument,
   and if the NAME contains the string \"kill\" then the selected columns will be deleted from the table."
   :group 'org-table
   :type '(alist :key-type string :value-type (function :tag "Function acting on list of lists")))
 
 ;; TODO - do something similar for .csv files?
 ;;;###autoload
+;; simple-call-tree-info: DONE
 (defun org-table-dispatch nil
   "Do something with column(s) of org-table at point.
 Prompt the user for an action in `org-table-dispatch-actions' and apply the corresponding function.
@@ -534,6 +553,7 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
       (funcall func))))
 
 ;;;###autoload
+;; simple-call-tree-info: DONE  
 (defun insert-file-as-org-table (filename)
   "Insert a file into the current buffer at point, and convert it to an org table."
   (interactive (list (ido-read-file-name "csv file: ")))
@@ -542,12 +562,14 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
     (org-table-convert-region start end)))
 
 ;;;###autoload
+;; simple-call-tree-info: DONE
 (defun org-table-copy-field nil
   "Copy the org-table field under point to the kill ring."
   (interactive)
   (kill-new (replace-regexp-in-string " +$" "" (replace-regexp-in-string "^ +" "" (org-table-get-field)))))
 
 ;;;###autoload
+;; simple-call-tree-info: DONE  
 (defun org-table-kill-field nil
   "Kill the org-table field under point."
   (interactive)
@@ -555,11 +577,13 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
   (org-table-blank-field))
 
 ;; Useful
+;; simple-call-tree-info: DONE  
 (defsubst split-string-by-width (width str)
   "Split a string STR into substrings of length at most WIDTH without breaking words."
   (split-string (s-word-wrap width str) "\n"))
 
 ;;;###autoload
+;; simple-call-tree-info: DONE  
 (defun org-table-narrow-column (width &optional arg)
   "Split the current column of an org-mode table to be WIDTH characters wide.
 If a cell's content exceeds WIDTH, split it into multiple rows, leaving new cells in other columns empty.
@@ -594,6 +618,7 @@ corresponding to the same original row."
       (org-table-goto-line curline)
       (org-table-goto-column curcol))))
 
+;; simple-call-tree-info: DONE  
 (defun org-table-get-column-widths (&optional tbl)
   "Return the widths of columns in an org table.
 Optional arg TBL is a list containing the table as returned by `org-table-to-lisp',
@@ -608,6 +633,7 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 
 ;;;###autoload
 (when (fboundp 'run-ampl-async)
+  ;; simple-call-tree-info: DONE  
   (defun org-table-narrow (width &optional arg fixedcols)
     "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 FIXEDCOLS should be a list of indices of the columns that shouldn't be narrowed (starting at 0).
@@ -697,6 +723,7 @@ sets of rows in the new table corresponding with rows in the original table."
 
 ;; This could be done more accurately using an AMPL program, but I want it to be usable even if AMPL is not available.
 ;;;###autoload
+;; simple-call-tree-info: CHECK  
 (defun org-table-fill-empty-cells (&optional col beg end min1 min2 rx)
   "Fill empty cells in current column of org-table at point by splitting non-empty cells above them.
 Specify a different column using the COL argument.
