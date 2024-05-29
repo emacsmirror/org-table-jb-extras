@@ -73,6 +73,8 @@
 ;;    Split the current column of an org-mode table to be WIDTH characters wide.
 ;;  `org-table-narrow'
 ;;   Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
+;;  `org-table-fill-empty-cells'
+;;   Fill empty cells in current column of org-table at point by splitting non-empty cells above them.
 ;;
 ;;; Customizable Options:
 ;;
@@ -729,8 +731,7 @@ will be set to the beginning & end of region if active, or the beginning and end
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
 ;; and the width of the table, etc.
-;; TODO: org-table-widen; opposite of org-table-narrow, it joins adjacent rows together
-;; TODO: alter org-table-narrow-column so that it uses existing empty cells where possible rather than creating new rows??
+;; TODO: org-table-squash; opposite of org-table-narrow, it joins adjacent rows together
 
 (provide 'org-table-jb-extras)
 

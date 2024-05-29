@@ -48,8 +48,12 @@ listed in `org-table-dispatch-actions'.
   - *org-table-copy-field* :
      Copy the org-table field under point to the kill ring.\\
   - *org-table-narrow-column*
-     Split the current column of an org-mode table to be WIDTH characters wide.
-
+     Split the current column of an org-mode table to be WIDTH characters wide.\\
+  - *org-table-narrow*
+     Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.\\
+  - *org-table-fill-empty-cells*
+     Fill empty cells in current column of org-table at point by splitting non-empty cells above them.\\
+     
 * Customizable Options
 
  Below is a list of customizable options:
