@@ -547,6 +547,11 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
   (kill-new (replace-regexp-in-string " +$" "" (replace-regexp-in-string "^ +" "" (org-table-get-field))))
   (org-table-blank-field))
 
+;; Useful
+(defsubst split-string-by-width (str width)
+  "Split a string into substrings of length at most WIDTH without breaking words."
+  (split-string (s-word-wrap width str) "\n"))
+
 ;;;###autoload
 (defun org-table-narrow-column (width &optional arg)
   "Split the current column of an org-mode table to be WIDTH characters wide.
@@ -566,9 +571,8 @@ corresponding to the same original row."
 				  ""
 				  (append
 				   (mapcar 'list (-select-by-indices (number-sequence 0 (- curcol 2)) it))
-				   (list (split-string (s-word-wrap width (nth (1- curcol) it)) "\n"))
-				   (mapcar 'list (nthcdr curcol it)))
-				  ))
+				   (list (split-string-by-width width (nth (1- curcol) it)))
+				   (mapcar 'list (nthcdr curcol it)))))
 			 table)))
     (org-table-align)
     (let ((start (org-table-begin))
@@ -670,7 +674,7 @@ sets of rows in the new table corresponding with rows in the original table."
 	(setq newrows (--map (let* ((row (nth it table)))
 			       (if (> (nth it rowcounts) 1)
 				   (apply '-zip-lists-fill ""
-					  (--zip-with (split-string (s-word-wrap it other) "\n")
+					  (--zip-with (split-string-by-width it other)
 						      colwidths row))
 				 (list row)))
 			     (number-sequence 0 (1- nrows))))
@@ -712,10 +716,10 @@ will be set to the beginning & end of region if active, or the beginning and end
 	    (when (> numcelllines 1)
 	      (setq fullcell cell
 		    newcellwidth (1+ (/ (length fullcell) numcelllines))
-		    newcells (split-string (s-word-wrap newcellwidth fullcell) "\n"))
+		    newcells (split-string-by-width newcellwidth fullcell))
 	      (while (> (length newcells) (length celllines))
 		(setq newcellwidth (+ newcellwidth 5)
-		      newcells (split-string (s-word-wrap newcellwidth fullcell) "\n")))
+		      newcells (split-string-by-width newcellwidth fullcell)))
 	      (save-excursion
 		(dolist (newcell newcells)
 		  (org-table-goto-line (pop celllines))
@@ -726,6 +730,7 @@ will be set to the beginning & end of region if active, or the beginning and end
 	(forward-line -1)
 	(org-table-goto-column col))
       (org-table-align))))
+
 
 
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
