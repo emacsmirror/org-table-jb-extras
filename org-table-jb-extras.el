@@ -494,7 +494,7 @@
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
 					("Narrow table" . (lambda nil (call-interactively 'org-table-narrow)))
-					("Fill empty cells" . org-table-fill-empty-cells)
+					("Fill empty cells" . (lambda nil (call-interactively 'org-table-fill-empty-cells)))
 					("Insert vertical line" . org-table-insert-or-delete-vline))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
@@ -548,8 +548,8 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
   (org-table-blank-field))
 
 ;; Useful
-(defsubst split-string-by-width (str width)
-  "Split a string into substrings of length at most WIDTH without breaking words."
+(defsubst split-string-by-width (width str)
+  "Split a string STR into substrings of length at most WIDTH without breaking words."
   (split-string (s-word-wrap width str) "\n"))
 
 ;;;###autoload
@@ -690,18 +690,31 @@ sets of rows in the new table corresponding with rows in the original table."
 
 ;; This could be done more accurately using an AMPL program, but I want it to be usable even if AMPL is not available.
 ;;;###autoload
-(defun org-table-fill-empty-cells (&optional col beg end)
+(defun org-table-fill-empty-cells (&optional col beg end min1 min2 rx)
   "Fill empty cells in current column of org-table at point by splitting non-empty cells above them.
 Specify a different column using the COL argument.
 BEG and END are optional positions defining the range of lines of the table to consider, by default they
 will be set to the beginning & end of region if active, or the beginning and end of the table otherwise
- (so that the entire column is processed)."
+ (so that the entire column is processed).
+MIN1 specifies that only cells of length >= MIN1 should be split, and MIN2 specifies that new cells should
+have average length at least MIN2. Finally you can limit cell splitting to only those match regexp RX.
+If called interactively with a prefix arg these last 3 arguments will be prompted for. By default they are
+not used."
   (interactive)
   (unless (org-at-table-p)
     (error "Point is not in an org-table"))
   (let* ((col (or col (org-table-current-column)))
          (beg (or beg (if (use-region-p) (region-beginning) (org-table-begin))))
          (end (or end (if (use-region-p) (region-end) (- (org-table-end) 2))))
+	 (min1 (if (and current-prefix-arg (called-interactively-p 'any))
+		   (read-number "Minimum length of cells to split: " 0)
+		 (or min1 0)))
+	 (min2 (if (and current-prefix-arg (called-interactively-p 'any))
+		   (read-number "Minimum average length of new cells: " 0)
+		 (or min2 0)))
+	 (rx (if (and current-prefix-arg (called-interactively-p 'any))
+		 (read-regexp "Only split cells matching regexp (default matches all): ")
+	       rx))
 	 (numcelllines 0)
          celllines newcells)
     (save-excursion
@@ -709,17 +722,20 @@ will be set to the beginning & end of region if active, or the beginning and end
       (while (>= (point) beg)
 	(let* ((line (org-table-current-line))
 	       (cell (org-table-get line col))
-	       fullcell newcellwidth)
+	       (celllen (length cell))
+	       newcellwidth)
 	  (push line celllines)
 	  (cl-incf numcelllines)
 	  (when (and cell (not (string-empty-p cell)))
-	    (when (> numcelllines 1)
-	      (setq fullcell cell
-		    newcellwidth (1+ (/ (length fullcell) numcelllines))
-		    newcells (split-string-by-width newcellwidth fullcell))
+	    (when (and (> numcelllines 1)
+		       (> celllen min1)
+		       (or (not rx) (string-match rx cell)))
+	      (setq newcellwidth (max (1+ (/ celllen numcelllines))
+				      min2)
+		    newcells (split-string-by-width newcellwidth cell))
 	      (while (> (length newcells) (length celllines))
 		(setq newcellwidth (+ newcellwidth 5)
-		      newcells (split-string-by-width newcellwidth fullcell)))
+		      newcells (split-string-by-width newcellwidth cell)))
 	      (save-excursion
 		(dolist (newcell newcells)
 		  (org-table-goto-line (pop celllines))
@@ -731,7 +747,7 @@ will be set to the beginning & end of region if active, or the beginning and end
 	(org-table-goto-column col))
       (org-table-align))))
 
-
+(defun org-table-squash)
 
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
