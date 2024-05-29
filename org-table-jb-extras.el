@@ -747,7 +747,7 @@ not used."
 	(org-table-goto-column col))
       (org-table-align))))
 
-(defun org-table-squash)
+;;(defun org-table-squash)
 
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
