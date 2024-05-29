@@ -13,7 +13,7 @@
 ;; URL: https://github.com/vapniks/org-table-jb-extras
 ;; Keywords: tools 
 ;; Compatibility: GNU Emacs 25.2.2
-;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1") (dash "2.19.1"))
+;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1") (dash "2.19.1") (s "1.13.1"))
 ;;
 ;; Features that might be required by this library:
 ;;
@@ -71,6 +71,8 @@
 ;;    Copy the org-table field under point to the kill ring.
 ;;  `org-table-narrow-column'
 ;;    Split the current column of an org-mode table to be WIDTH characters wide.
+;;  `org-table-narrow'
+;;   Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 ;;
 ;;; Customizable Options:
 ;;
@@ -106,6 +108,7 @@
 (require 'cl-lib)
 (require 'ido-choose-function)
 (require 'dash)
+(require 's)
 (require 'ampl-mode nil t) ;; my version which contains `run-ampl-async'
 ;;; Code:
 
@@ -489,6 +492,7 @@
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
 					("Narrow table" . (lambda nil (call-interactively 'org-table-narrow)))
+					("Fill empty cells" . org-table-fill-empty-cells)
 					("Insert vertical line" . org-table-insert-or-delete-vline))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
@@ -678,10 +682,54 @@ sets of rows in the new table corresponding with rows in the original table."
 	(org-table-goto-line curline)
 	(org-table-goto-column curcol)))))
 
+;; This could be done more accurately using an AMPL program, but I want it to be usable even if AMPL is not available.
+;;;###autoload
+(defun org-table-fill-empty-cells (&optional col beg end)
+  "Fill empty cells in current column of org-table at point by splitting non-empty cells above them.
+Specify a different column using the COL argument.
+BEG and END are optional positions defining the range of lines of the table to consider, by default they
+will be set to the beginning & end of region if active, or the beginning and end of the table otherwise
+ (so that the entire column is processed)."
+  (interactive)
+  (unless (org-at-table-p)
+    (error "Point is not in an org-table"))
+  (let* ((col (or col (org-table-current-column)))
+         (beg (or beg (if (use-region-p) (region-beginning) (org-table-begin))))
+         (end (or end (if (use-region-p) (region-end) (- (org-table-end) 2))))
+	 (numcelllines 0)
+         celllines newcells)
+    (save-excursion
+      (goto-char end)
+      (while (>= (point) beg)
+	(let* ((line (org-table-current-line))
+	       (cell (org-table-get line col))
+	       fullcell newcellwidth)
+	  (push line celllines)
+	  (cl-incf numcelllines)
+	  (when (and cell (not (string-empty-p cell)))
+	    (when (> numcelllines 1)
+	      (setq fullcell cell
+		    newcellwidth (1+ (/ (length fullcell) numcelllines))
+		    newcells (split-string (s-word-wrap newcellwidth fullcell) "\n"))
+	      (while (> (length newcells) (length celllines))
+		(setq newcellwidth (+ newcellwidth 5)
+		      newcells (split-string (s-word-wrap newcellwidth fullcell) "\n")))
+	      (save-excursion
+		(dolist (newcell newcells)
+		  (org-table-goto-line (pop celllines))
+		  (org-table-goto-column col)
+		  (org-table-blank-field)
+		  (insert (pop newcells)))))
+	    (setq celllines nil numcelllines 0)))
+	(forward-line -1)
+	(org-table-goto-column col))
+      (org-table-align))))
+
+
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
 ;; and the width of the table, etc.
-;; TODO: org-table-split-cell-below: split cell at point into empty cells beneath
+;; TODO: org-table-widen; opposite of org-table-narrow, it joins adjacent rows together
 ;; TODO: alter org-table-narrow-column so that it uses existing empty cells where possible rather than creating new rows??
 
 (provide 'org-table-jb-extras)
