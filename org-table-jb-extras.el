@@ -13,7 +13,7 @@
 ;; URL: https://github.com/vapniks/org-table-jb-extras
 ;; Keywords: tools 
 ;; Compatibility: GNU Emacs 25.2.2
-;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1"))
+;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1") (dash "2.19.1"))
 ;;
 ;; Features that might be required by this library:
 ;;
@@ -105,7 +105,7 @@
 (require 'org)
 (require 'cl-lib)
 (require 'ido-choose-function)
-
+(require 'dash)
 ;;; Code:
 
 ;; REMEMBER TODO ;;;###autoload's 
@@ -544,23 +544,18 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 ;;;###autoload
 (defun org-table-narrow-column (width &optional arg)
   "Split the current column of an org-mode table to be WIDTH characters wide.
-If a cell's content exceeds WIDTH, split it into multiple rows. 
+If a cell's content exceeds WIDTH, split it into multiple rows, leaving new cells
+in other columns empty.
 When called interactively or if WIDTH is nil, the user will be prompted for a width.
-If ARG is nil, copy text in other columns to the new rows.
-If ARG is the symbol 'hline, or a single prefix is used interactively, make new rows
- (except the first one of each group) empty apart from the cell in the current column, 
-and put a horizontal line between each group. If ARG is the symbol 'copy, or a double prefix
-is used interactively, copy the content of cells in other columns into the new rows."
+If ARG is the symbol 'hlines, or a single prefix is used interactively, put a horizontal 
+line between each group of rows corresponding to the same original row."
   (interactive (list (read-number "New column width: ")
-		     (cond ((equal current-prefix-arg '(16))
-			    'copy)
-			   (current-prefix-arg 'hlines))))
+		     (if current-prefix-arg 'hlines)))
   (unless (org-at-table-p) (error "Not in an org-mode table"))
   (let* ((width (or width (read-number "New column width: ")))
 	 (col (org-table-current-column))
          (rows (org-table-to-lisp))
          (new-rows '())
-         (copy-other-columns (equal arg 'copy))
 	 (curpos (cons (org-table-current-line) col)))
     (dolist (row rows)
       (if (eq row 'hline)
@@ -583,8 +578,8 @@ is used interactively, copy the content of cells in other columns into the new r
                   (push new-row new-rows))
                 ;; Process the remaining parts
                 (dolist (part parts)
-                  (let ((new-row (if copy-other-columns
-                                     (copy-sequence row)
+                  (let ((new-row (if (equal arg 'copy)
+				     (copy-sequence row)
                                    (make-list (length row) ""))))
                     (setf (nth (1- col) new-row) part)
                     (push new-row new-rows))))
@@ -609,36 +604,108 @@ is used interactively, copy the content of cells in other columns into the new r
   "Return the widths of columns in an org table.
 Optional arg TBL is a list containing the table as returned by `org-table-to-lisp',
 if this is nil then it will be calculated using `org-table-to-lisp'."
-  (let ((table (or tbl (org-table-to-lisp)))
-        (widths nil))
-    (dolist (row table)
-      (unless (eq row 'hline)
-        (setq widths
-              (cl-mapcar (lambda (x y) (max x (length y)))
-			 (or widths (make-list (length row) 0))
-			 row))))
-    widths))
+  (let ((table (or tbl (org-table-to-lisp))))
+    (-reduce-from (lambda (acc row)
+		    (if (eq row 'hline)
+			acc
+		      (-zip-with 'max acc (-map 'length row))))
+		  (make-list (length (cl-find-if 'listp table)) 0)
+		  table)))
+
 
 ;;;###autoload
-;; TODO: `org-table-narrow' will narrow entire table in similar manner to `org-table-narrow-column',
-;; but over multiple columns if necessary.
-;; Add splitcols arg to indicate which columns can have their cell split.
-;; Use chatgpt to help write an emacs dynamic module for interfacing with glpk,
-;; and then use glpk for solving the problem of narrowing an org table (and other problems).
-;; Or use `call-process' to call gplsol to solve the problem.
-;; Alternatively use a greedy algorithm written in elisp (chatgpt isn't smart enough to find this algorithm):
-;; for each column in splitcols check difference between longest and 2nd longest cell, and then choose column which
-;; has the largest such value and add a new row under the longest cell in that column and split the contents
-;; of all other cells (in splitcols columns) in the same row as the longest cell, into the new row.
-;; Keep repeating this until total table width is <= WIDTH arg.
-;; (defun org-table-narrow (width &optional arg)
-;;   "Narrow the entire org-mode table to be within WIDTH characters by adding new rows.
-;; If ARG is nill make cells in new rows empty apart from those that need to be split up due to narrowing.
-;; If ARG is 'copy copy text in cells of columns that aren't narrowed into cells of new rows.
-;; If ARG is 'hline do the same as for when ARG is nil but also put horizontal lines between groups
-;; of rows corresponding to original rows."
-;;   (interactive "nEnter table width: \nP")
-;;   )
+(defun org-table-narrow (width &optional arg fixedcols)
+  "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
+FIXEDCOLS should be a list of indices of the columns that shouldn't be narrowed (starting at 0).
+New cells added beneath those that don't need to be split will be left empty.
+If ARG is non-nil, or if a prefix arg is used when called interactively, then put horizontal lines between
+sets of rows in the new table corresponding with rows in the original table."
+  (interactive (let* ((tblstart (org-table-begin))
+		      (lineend (save-excursion (goto-char tblstart) (line-end-position)))
+		      (numcols 0)
+		      (hist (progn (save-excursion (goto-char tblstart)
+						   (while (search-forward "|" lineend t)
+						     (setq numcols (1+ numcols))))
+				   (cons (mapconcat 'number-to-string (number-sequence 0 (- numcols 2)) " ")
+					 minibuffer-history)))
+		      (str (read-string "Indices of fixed columns (press <up> to see full list, default = None): "
+					nil 'hist)))
+		 (list
+		  (read-number (format "New table width (current width = %s): "
+				       (- lineend tblstart)))
+		  current-prefix-arg
+		  (progn (while (not (string-match "^[0-9 ]*$" str))
+			   (setq str (read-string "Indices of fixed columns (space separated): ")))
+			 (mapcar 'string-to-number
+				 (cl-remove "" (split-string str "\\s-+") :test 'equal))))))
+  (unless (org-at-table-p) (error "Not in an org-mode table"))
+  (let* ((table (org-table-to-lisp))
+	 (nrows (length table))
+	 (ncols (length (cl-find-if 'listp table)))
+	 (colwidths (org-table-get-column-widths table))
+	 (freecols (-difference (number-sequence 0 (1- ncols)) fixedcols))
+	 (inputstr (mapconcat 'number-to-string ;; input data for AMPL
+			      (append (list nrows (length freecols)
+					    (- width
+					       (apply '+ (-select-by-indices fixedcols colwidths))))
+				      (mapcan (lambda (row)
+						(if (symbolp row)
+						    (make-list (length freecols) 0)
+						  (mapcar 'length (-select-by-indices freecols row))))
+					      table))
+			      " "))
+	 (outbuf "*org-table AMPL output*")
+	 (errbuf "*org-table AMPL error*")
+	 (curline (org-table-current-line))
+	 (curcol (org-table-current-column))
+	 (startpos (org-table-begin))
+	 (endpos (org-table-end))
+	 amplproc rowcounts newwidths newrows)
+    (setq amplproc (run-ampl-async inputstr outbuf errbuf
+				   (list
+				    (concat (file-name-directory (locate-library "org-table-jb-extras"))
+					    "table_widths.mod"))))
+    (while (not (memq (process-status amplproc) '(exit signal)))
+      (sit-for 0.1))
+    (if (with-current-buffer errbuf
+	  (search-backward "AMPL command executed successfully" nil t))
+	(with-current-buffer outbuf
+	  (goto-char (point-min))
+	  (search-forward "Widths: ")
+	  (setq newwidths (mapcar 'string-to-number
+				  (split-string (string-trim (buffer-substring (point) (point-at-eol)))
+						"\\s-+")))
+	  (dotimes (i (length freecols))
+	    (setf (nth (nth i freecols) colwidths) (nth i newwidths)))
+	  (search-forward "Rows: ")
+	  (setq rowcounts (mapcar 'string-to-number
+				  (split-string (string-trim (buffer-substring (point) (point-at-eol)))
+						"\\s-+"))))
+      (error "AMPL error. See %s buffer for details" errbuf))
+    (if (-any? 'zerop newwidths)
+	(message "Unable to narrow table to desired width")
+      (setq newrows (--map (let* ((row (nth it table)))
+			     (if (> (nth it rowcounts) 1)
+				 (apply '-zip-lists-fill ""
+					(--zip-with (split-string (s-word-wrap it other) "\n")
+						    colwidths row))
+			       (list row)))
+			   (number-sequence 0 (1- nrows))))
+      (delete-region startpos endpos)
+      (goto-char startpos)
+      (dolist (row (-flatten-n 1 (if arg (-interpose '(hline) newrows) newrows)))
+	(if (eq row 'hline)
+	    (insert "|-\n")
+	  (insert "| " (mapconcat 'identity row " | ") " |\n")))
+      (org-table-align)
+      (org-table-goto-line curline)
+      (org-table-goto-column curcol))))
+
+;; TODO: org-table-reformat: user chooses from a collection of preset options which
+;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
+;; and the width of the table, etc.
+;; TODO: org-table-split-cell-below: split cell at point into empty cells beneath
+;; TODO: alter org-table-narrow-column so that it uses existing empty cells where possible rather than creating new rows??
 
 (provide 'org-table-jb-extras)
 
