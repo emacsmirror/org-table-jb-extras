@@ -487,8 +487,7 @@
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
-					("Narrow column with hlines" .
-					 (lambda nil (org-table-narrow-column nil 'hlines)))
+					("Narrow table" . (lambda nil (call-interactively 'org-table-narrow)))
 					("Insert vertical line" . org-table-insert-or-delete-vline))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
