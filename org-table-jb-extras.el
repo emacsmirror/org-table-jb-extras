@@ -747,12 +747,376 @@ not used."
 	(org-table-goto-column col))
       (org-table-align))))
 
-;;(defun org-table-squash)
-
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
 ;; and the width of the table, etc.
 ;; TODO: org-table-squash; opposite of org-table-narrow, it joins adjacent rows together
+
+;; simple-call-tree-info: DONE  
+(defun org-table-timestamp-p (x)
+  "Return non-nil if X is a string containing an org timestamp."
+  (and (stringp x)
+       (string-match "[0-9]\\{4\\}-[0-9]\\{1,2\\}-[0-9]\\{1,2\\}" x)))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-equal (x y)
+  "Return non-nil if X & Y represent the same number/symbol/string."
+  (cond
+   ((and (numberp x) (numberp y)) (equalp x y))
+   ((and (numberp x) (stringp y)) (equalp x (string-to-number y)))
+   ((and (stringp x) (numberp y)) (equalp (string-to-number x) y))
+   ((and (stringp x) (stringp y)) (equalp x y))
+   ((and (symbolp x) (stringp y)) (equalp (symbol-name x) y))
+   ((and (stringp x) (symbolp y)) (equalp x (symbol-name y)))
+   ((and (symbolp x) (symbolp y)) (eql x y))
+   (t (equalp x y))))
+
+;; simple-call-tree-info: DONE  
+(defun org-table-between (x y z &optional excly exclz)
+  "Return non-nil if X is >= to Y and <= Z, where X is a string, and Y & Z may be numbers, timestamps or strings.
+If Y is nil then just test for X <= Z and if Z is nil just test X >= Y.
+If EXCLY/EXCLZ are non nil then don't allow values of X equal to Y/Z respectively.
+
+The type of test performed depends on the types of Y & Z:
+If Y and Z are numbers , then convert X to a number and compare numbers.
+If Y and Z are org-timestamps, then treat X as a timestamp and compare times.
+In all other cases compare strings lexicographically (using `string<', `string>', and `string=')."
+  (let (cmpy cmpz)
+    (cond
+     ((and (not y) (not z)) (error "Need at least one of Y or Z args to compare"))
+     ((or (numberp y) (numberp z))
+      (setq cmpy (if excly '> '>=)
+            cmpz (if exclz '< '<=)
+            x (string-to-number x)))
+     ((or (not (org-table-timestamp-p y))
+          (not (org-table-timestamp-p z)))
+      (setq cmpy (if excly (lambda (a b) (and (not (string= a b)) (not (string< a b))))
+                   (lambda (a b) (not (string< a b))))
+            cmpz (if exclz 'string< (lambda (a b) (or (string< a b) (string= a b))))))
+     (t (setq cmpy (if excly '> '>=)
+              cmpz (if exclz '< '<=)
+              x (org-time-string-to-seconds x)
+              y (if y (org-time-string-to-seconds y))
+              z (if z (org-time-string-to-seconds z)))))
+    (and (if y (funcall cmpy x y) t)
+         (if z (funcall cmpz x z) t))))
+
+;; simple-call-tree-info: DONE  
+(defun org-table-fetch (name-or-id &optional aslisp)
+  "Return table named NAME as text, or as a lisp list if optional arg ASLISP is non-nil.
+The name of a table is determined by a #+NAME or #+TBLNAME line before the table."
+  (let (buffer start end id-loc)
+    (save-excursion
+      (save-restriction
+        (widen)
+        (goto-char (point-min))
+        (if (re-search-forward
+             (concat "^[ \t]*#\\+\\(tbl\\)?name:[ \t]*"
+                     (regexp-quote name-or-id) "[ \t]*$")
+             nil t)
+            (setq buffer (current-buffer) start (match-beginning 0))
+          (setq id-loc (org-id-find name-or-id 'marker))
+          (unless (and id-loc (markerp id-loc))
+            (user-error "Can't find remote table \"%s\"" name-or-id))
+          (setq buffer (marker-buffer id-loc)
+                start (marker-position id-loc))
+          (move-marker id-loc nil))))
+    (with-current-buffer buffer
+      (save-excursion
+	(save-restriction
+	  (widen)
+          (goto-char start)
+          (re-search-forward "^|")
+          (beginning-of-line)
+          (if aslisp (org-table-to-lisp)
+            (buffer-substring (point) (marker-position (org-table-end)))))))))
+
+;; simple-call-tree-info: DONE  
+(defun org-table-ncols (tbl)
+  "Returns the number of columns in an org table (in list form)"
+  (let ((n 0))
+    (while (eql (nth n tbl) 'hline)
+      (setq n (1+ n)))
+    (length (nth n tbl))))
+
+;; simple-call-tree-info: DONE
+(defun org-table-nrows (tbl)
+  "Returns the number of rows in an org table (in list form) not counting hlines.
+To count the number of rows including hlines use `length'."
+  (length (remove 'hline tbl)))
+
+;; simple-call-tree-info: DONE  
+(defun org-table-lisp-to-string (lst &optional insert)
+  "Convert an org table stored in list LST into a string.
+LST should be a list of lists as returned by `org-table-to-lisp'.
+If optional arg INSERT is non-nil then insert and align the table at point."
+  (if lst
+      (let* ((ncols (-max (mapcar (lambda (x) (if (listp x) (length x) 1)) lst)))
+             (str (mapconcat (lambda(x)
+                               (if (eq x 'hline) (concat "|" (s-repeat ncols "+|") "\n")
+                                 (concat "| " (mapconcat 'identity x " | " ) "  |\n" )))
+                             lst "")))
+        (if (not insert) str
+          (insert str)
+          (org-table-align)))))
+
+;; simple-call-tree-info: DONE
+(defun org-table-strings-to-orgtable (lst rowsize &optional order)
+  "Convert a list of strings into a list of lists of strings representing an org table.
+LST is the list of strings, and ROWSIZE is the number of items to be placed in each row.
+If (length LST) is not a multiple of ROWSIZE then blanks (nils) will be used to fill the
+leftover columns.
+The optional argument ORDER is a list of indices indicating the order in which the items
+in LST should be added to the table (note 0 indexes the first item). The items will be added
+row by row, but you may transpose the table afterwards using `org-table-transpose'."
+  (let* ((lst (if order (-select-by-indices order lst) lst))
+         (rem (% (length lst) rowsize)))
+    (-snoc (-partition rowsize lst)
+           (nconc (subseq lst (* -1 rem))
+                  (make-list (- rowsize rem) nil)))))
+
+;; simple-call-tree-info: DONE  
+(defun org-table-insert (lst)
+  "Insert org table (represented as a list of lists) at point."
+  (org-table-lisp-to-string lst t))
+
+;; simple-call-tree-info: TODO
+(defun org-table-insert-hlines (lst rows)
+  "Insert hlines into an org table LST (represented as a list of lists).
+The hlines will be inserted at the row numbers in the list ROWS (starting
+with row 0). The hlines are inserted in order from smallest row to largest
+so that the resulting list has hlines at the indices in ROWS."
+  (let ((rows (sort rows '<)))
+    (dolist (row rows)
+      (setq lst (-insert-at row 'hline lst))))
+  lst)
+
+;; simple-call-tree-info: CHECK  
+(defun org-table-transpose (tbl)
+  "Transpose an org table (represented as a list of lists).
+Rows will be changed to columns and vice-versa, after removing hlines."
+  (let* ((table (delq 'hline tbl)))
+    (mapcar (lambda (p)
+              (let ((tp table))
+                (mapcar
+                 (lambda (rown)
+                   (prog1
+                       (pop (car tp))
+                     (!cdr tp)))
+                 table)))
+            (car table))))
+
+;; simple-call-tree-info: CHECK  
+(cl-defun org-table-create-new (nrows ncols &optional (val ""))
+  "Create a blank table with NROWS rows and NCOLS columns as a list of lists.
+Optional argument VAL (a string) will be used to fill the cells of the table."
+  (loop for n from 0 to (1- nrows)
+        collect (make-list ncols val)))
+
+;; TODO: could use -interleave, mapcar and flatten to do this (preferred if not slower)
+;; simple-call-tree-info: TODO
+(cl-defun org-table-cbind (tbls &optional padding)
+  "Join tables in TBLS (each represented as a lists of lists) together horizontally to form columns of new table.
+If the tables have different numbers of rows then extra cells will be added to the end of some columns
+to fill the gaps. These extra cells will be filled with the empty string by default, or you can supply a different
+padding string with the optional PADDING arg.
+hlines will be removed from the tables before joining them."
+  (let* ((tbls (mapcar (cur 'delq 'hline) (delq nil tbls)))
+         (maxrows (-max (mapcar 'length tbls))))
+    (loop for n from 0 to (1- maxrows)
+          collect (loop for tbl in tbls
+                        append (or (nth n tbl)
+                                   (make-list (org-table-ncols tbl) padding))))))
+
+;; simple-call-tree-info: DONE
+(cl-defun org-table-rbind (tbls &optional padding)
+  "Join tables in TBLS (each represented as a lists of lists) together vertically to form rows of new table.
+If the tables have different numbers of columns then extra cells will be added to the end of some
+rows to fill the gaps. These extra cells will be filled with the empty string by default, or you can supply
+a different padding string with the optional PADDING arg.
+hlines will be removed from the tables before joining them."
+  (let* ((tbls (mapcar (cur 'delq 'hline) (delq nil tbls)))
+         (widths (mapcar 'org-table-ncols tbls))
+         (maxwidth (-max widths)))
+    (loop for tbl in tbls
+          for width in widths
+          append (if (< width maxwidth) 
+                     (org-table-cbind
+                      (list tbl
+                            (org-table-create-new (length tbl)
+                                                  (- maxwidth width) padding)))
+                   tbl))))
+
+;; simple-call-tree-info: DONE
+(defun org-table-rbind-named (tblnames &optional namescol padding)
+  "Join tables with names/IDs in list TBLNAMES together vertically to form rows of new table, and return as a list.
+If the optional argument NAMESCOL is non-nil an extra column will be added containing the name/ID of the table
+corresponding to each row. If NAMESCOL is 'last the new column will be made the final column, for any other non-nil
+value it will be made the first column.
+If the PADDING arg is supplied it should be a string to use for padding extra cells (see `org-table-rbind')."
+  (let* ((tables (mapcar* 'org-table-fetch tblnames (make-list (length tblnames) t)))
+         (newtbl (org-table-rbind tables padding)))
+    (aif namescol
+        (let ((newcol (loop for tbl in tables
+                            for name in tblnames
+                            for lst = (make-list (org-table-nrows tbl) (list name))
+                            nconc lst)))
+          (if (org-table-equal it 'last)
+              (org-table-cbind (list newtbl newcol))
+            (org-table-cbind (list newcol newtbl))))
+      newtbl)))
+
+;; TODO: Selecting rows/columns by index could be done much faster (see -slice and -select-by-indices in dash.el)
+;; simple-call-tree-info: REFACTOR
+(cl-defun org-table-filter-list (lst &optional cols rows filter)
+  "Filter out rows and columns of a matrix LST represented as a list of lists.
+
+Optional arguments ROWS & COLS are used to indicate which rows and columns to use.
+By default all rows/cols are used. The optional FILTER argument is used to filter these selected rows.
+Read on for more details.
+
+The ROWS/COLS args may be lists containing a mixture of integers and sublists of 2 or 3 integers.
+Individual integers in the list indicate individual rows/columns and sublists indicate ranges.
+The `number-sequence' function is applied to sublists to obtain a sequence of integers, e.g. (2 10 2) results
+in rows/columns 2, 4, 6, 8, & 10. The integer 0 indicates the final row/column and negative integers count
+backward from the last row/column. Integers larger than the largest row/column or smaller than minus that
+number indicate the last/first row/column respectively.
+So for example \"((1 10) 20 (-9 0))\" selects the first 10 rows/cols, followed by the 20th row/col, followed by
+the last 10 rows/cols. If ROWS/COLS is nil then all rows/cols (respectively) are returned.
+
+FILTER should be an sexp that returns non-nil for rows to be included in the output.
+It will be mapped over the rows indicated by the ROWS arg, or all rows if this is missing or nil.
+The following variables may be used in the sexp:
+
+n       : The number of rows processed so far (e.g: this can be used to limit the amount of output).
+c<N>    : The string contained in column <N> of the current row, or nil if it is empty.
+c<N>n   : The number contained in column <N> of the current row (using `string-to-number').
+row     : A list containing all the items in the current row in order, as strings."
+  (let* ((table (delq 'hline lst))
+         (tablelength (length table))
+         (tablewidth (org-table-ncols table))
+         ;; deal with negative cols values
+         (cols2 (delq nil (-tree-map (lambda (x) (if (> x 0) x (+ tablewidth x))) cols)))
+         ;; expand pairs/triples into number sequences
+         (cols3 (loop for x in cols2
+                      if (listp x) nconc (number-sequence (first x) (second x) (third x))
+                      else nconc (list x)))
+         ;; now do the same for rows
+         (rows2 (delq nil (-tree-map (lambda (x) (if (> x 0) x (+ tablelength x))) rows)))
+         (rows3 (loop for x in rows2
+                      if (listp x) nconc (number-sequence (first x) (second x) (third x))
+                      else nconc (list x)))
+         ;; select the required rows
+         (table2 (if rows3 (delq nil (mapcar (lambda (i) (nth (1- i) table)) rows3)) table))
+         ;; create the filter
+         (filter2 (if filter
+                      `(lambda (row)
+                         (let* ,(mapcan (lambda (x)
+                                          ;; TODO: try using progv here
+                                          (let* ((colnum (number-to-string x))
+                                                 (varname (concat "c" colnum))
+                                                 (var (intern varname))
+                                                 (numvar (intern (concat varname "n"))))
+                                            `((,var (if (not (equal (nth ,(1- x) row) ""))
+                                                        (nth ,(1- x) row)))
+                                              (,numvar (string-to-number (nth ,(1- x) row))))))
+                                        (number-sequence 1 (length (car table2))))
+                           (setq n (1+ n))
+                           ,filter))))
+         (n -1)
+         ;; apply the filter
+         (tbllines (remove-if-not filter2 table2)))
+    ;; select the required columns
+    (if cols3 (mapcar (lambda (line) (mapcar (lambda (i) (nth (1- i) line)) cols3)) tbllines)
+      tbllines)))
+
+;; (cl-defun org-table-transform-list (lst &key col row)
+;;   "Apply transformations to a list of lists."
+;;   )
+
+;; simple-call-tree-info: DONE  
+(cl-defun org-table-inherit-params (params &optional (propsname (plist-get params :name)))
+  "Combine dynamic block PARAMS with those inherited from the corresponding org property named PROPSNAME.
+By default PROPSNAME is obtained from the :name property in PARAMS (i.e. the name of the dynamic block type).
+The inherited property should be in the same form as a parameter list for the corresponding dynamic block."
+  (let* ((inherited (if propsname (org-entry-get (point) propsname t))))
+    (if inherited (org-combine-plists (read (concat "(" inherited ")")) params) params)))
+
+;;;###autoload
+;; simple-call-tree-info: DONE  
+(defun org-dblock-write:tablefilter (params)
+  "Org dynamic block function to filter lines/columns of org tables.
+
+The plist may contain the following parameters:
+
+ :tblnames = the name or ID of the table to filter (quoted),
+             or a list of such names/IDs (quoted & surrounded by brackets)
+ :rows = a list of integers and ranges (surrounded by brackets) indicating which rows of
+         the source table to use (see below for details). If nil then all rows are used.
+ :cols = as above but indicating which columns to display in the result. If nil then all columns are displayed.
+ :filter = an sexp for filtering the rows to be displayed (see below). If nil then all rows are displayed.
+ :noerrors = if non-nil or if placed at the end of the parameter list then any rows which give an error when
+             put through the filter will not be displayed. 
+ :namescol = if non-nil then an extra column containing the name of the table corresponding to each row
+             will be added. By default this new column will be the first column, but if the parameter
+             value is last then the new column will be made the last column.
+
+Any of these parameter may be inherited from an org property named :TABLEFILTER: (including :tblnames).
+The value of this property should have the same form as the dynamic block parameter list, e.g:
+   :PROPERTIES:
+   :TABLEFILTER: :cols ((2 -1)) :rows ((1 10)) :namescol last :noerrors :tblnames (\"tbl1\" \"tbl2\")
+   :END:
+Parameters listed on the dynamic block statement get priority over inherited parameters.
+
+The :rows and :cols arguments should be lists containing a mixture of integers and sublists of 2 or 3 integers.
+Individual integers in the list indicate individual rows/columns and sublists indicate ranges.
+The `number-sequence' function is applied to sublists to obtain a sequence of integers, e.g. (2 10 2) results
+in rows/columns 2, 4, 6, 8, & 10. The integer 0 indicates the final row/column and negative integers count
+backward from the last row/column. Integers larger than the largest row/column or smaller than minus that
+number indicate the last/first row/column respectively.
+So for example \":row ((1 10) 20 (-9 0))\" selects the first 10 rows, followed by the 20th row, followed by
+the last 10 rows (and similarly for columns if :cols was used instead of :rows).
+
+The :filter argument should be an sexp that returns non-nil for rows to be included in the output.
+It will be mapped over the rows indicated by the :rows arg, or all rows if this is missing or nil.
+The following variables may be used in the sexp:
+
+n              : The number of rows processed so far (e.g: this can be used to limit the amount of output).
+c<N>           : The string contained in column <N> of the current row.
+c<N>n          : The number contained in column <N> of the current row (using `string-to-number').
+row            : A list containing all the items in the current row in order, as strings.
+
+Additionally the filter may make use of function bindings in `org-table-filter-function-bindings' (which see).
+
+Some examples now follow.
+
+From the table named \"account\" select all even rows from 2 to 100 inclusive, and columns 1-5 and 10.
+
+#+BEGIN: tablefilter :tblname \"account\" :rows ((2 100 2)) :cols ((1 5) 10)
+
+Select the first 10 rows where the first column is a date within 10 days of today, and the second column
+is a number greater than 1000, returning just columns 2 & 3:
+
+#+BEGIN: tablefilter :tblname \"account\" :filter (and (<= n 10) (> (days-to-now c1) -10) (> (num c2) 1000)) :cols (2 3)
+
+Return the rows among the first 100 which match the word \"shopping\" in column 3 (note that c3 is or'ed with \"\" so
+that rows in which c3 is empty dont cause an error):
+
+#+BEGIN: tablefilter :tblname \"account\" :filter (string-match \"shopping\" (or c3 \"\")) :rows ((1 100))
+"
+  (destructuring-bind
+      (tblnames tblname namescol noerrors noerror cols rows filter)
+      (mapcar (cur 'plist-get (org-table-inherit-params params))
+              '(:tblnames :tblname :namescol :noerrors :noerror :cols :rows :filter))
+    (setq tblnames (or tblnames tblname) noerrors (or noerrors noerror))
+    (org-table-insert
+     ;; Note: for some reason this doesn't work if `flet' is replaced by `cl-flet'
+     (eval `(flet ,(mapcar 'car org-table-filter-function-bindings)
+              (org-table-filter-list (if (listp tblnames) (org-table-rbind-named tblnames namescol "")
+                                       (org-table-fetch tblnames t))
+                                     cols rows (if noerrors
+                                                   `(condition-case nil ,filter (error nil))
+                                                 filter)))))))
 
 (provide 'org-table-jb-extras)
 
