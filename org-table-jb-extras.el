@@ -544,61 +544,38 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 ;;;###autoload
 (defun org-table-narrow-column (width &optional arg)
   "Split the current column of an org-mode table to be WIDTH characters wide.
-If a cell's content exceeds WIDTH, split it into multiple rows, leaving new cells
-in other columns empty.
+If a cell's content exceeds WIDTH, split it into multiple rows, leaving new cells in other columns empty.
 When called interactively or if WIDTH is nil, the user will be prompted for a width.
-If ARG is the symbol 'hlines, or a single prefix is used interactively, put a horizontal 
-line between each group of rows corresponding to the same original row."
-  (interactive (list (read-number "New column width: ")
-		     (if current-prefix-arg 'hlines)))
+If ARG is non-nil, or a prefix arg is used interactively, put a horizontal line between each group of rows 
+corresponding to the same original row."
+  (interactive "nNew column width: \nP")
   (unless (org-at-table-p) (error "Not in an org-mode table"))
-  (let* ((width (or width (read-number "New column width: ")))
-	 (col (org-table-current-column))
-         (rows (org-table-to-lisp))
-         (new-rows '())
-	 (curpos (cons (org-table-current-line) col)))
-    (dolist (row rows)
-      (if (eq row 'hline)
-          (push row new-rows)
-        (let ((cell (nth (1- col) row)))
-          (if (> (length cell) width)
-              (let ((words (split-string cell " "))
-                    (line "")
-                    (parts '()))
-                (dolist (word words)
-                  (if (> (+ (length line) (length word) 1) width)
-                      (progn (push line parts)
-			     (setq line word))
-                    (setq line (if (string= line "") word (concat line " " word)))))
-                (when (not (string= line "")) (push line parts))
-                (setq parts (nreverse parts))
-                ;; Process the first part with the original row content
-                (let ((new-row (copy-sequence row)))
-                  (setf (nth (1- col) new-row) (pop parts))
-                  (push new-row new-rows))
-                ;; Process the remaining parts
-                (dolist (part parts)
-                  (let ((new-row (if (equal arg 'copy)
-				     (copy-sequence row)
-                                   (make-list (length row) ""))))
-                    (setf (nth (1- col) new-row) part)
-                    (push new-row new-rows))))
-            (push row new-rows))
-          ;; Add horizontal line if single prefix argument is used
-          (when (equal arg 'hlines) (push 'hline new-rows)))))
-    (setq new-rows (nreverse new-rows))
+  (let* ((curcol (org-table-current-column))
+         (table (org-table-to-lisp))
+	 (curline (org-table-current-line))
+	 (newrows (--map (if (or (eq it 'hline)
+				 (<= (length (nth (1- curcol) it)) width))
+			     (list it)
+			   (apply '-zip-lists-fill
+				  ""
+				  (append
+				   (mapcar 'list (-select-by-indices (number-sequence 0 (- curcol 2)) it))
+				   (list (split-string (s-word-wrap width (nth (1- curcol) it)) "\n"))
+				   (mapcar 'list (nthcdr curcol it)))
+				  ))
+			 table)))
     (org-table-align)
     (let ((start (org-table-begin))
           (end (org-table-end)))
       (delete-region start end)
       (goto-char start)
-      (dolist (row new-rows)
+      (dolist (row (apply 'append (if arg (-interpose '(hline) newrows) newrows)))
         (if (eq row 'hline)
             (insert "|-\n")
           (insert "| " (mapconcat 'identity row " | ") " |\n")))
       (org-table-align)
-      (org-table-goto-line (car curpos))
-      (org-table-goto-column (cdr curpos)))))
+      (org-table-goto-line curline)
+      (org-table-goto-column curcol))))
 
 (defun org-table-get-column-widths (&optional tbl)
   "Return the widths of columns in an org table.
@@ -611,7 +588,6 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 		      (-zip-with 'max acc (-map 'length row))))
 		  (make-list (length (cl-find-if 'listp table)) 0)
 		  table)))
-
 
 ;;;###autoload
 (defun org-table-narrow (width &optional arg fixedcols)
@@ -693,7 +669,7 @@ sets of rows in the new table corresponding with rows in the original table."
 			   (number-sequence 0 (1- nrows))))
       (delete-region startpos endpos)
       (goto-char startpos)
-      (dolist (row (-flatten-n 1 (if arg (-interpose '(hline) newrows) newrows)))
+      (dolist (row (apply 'append (if arg (-interpose '(hline) newrows) newrows)))
 	(if (eq row 'hline)
 	    (insert "|-\n")
 	  (insert "| " (mapconcat 'identity row " | ") " |\n")))
