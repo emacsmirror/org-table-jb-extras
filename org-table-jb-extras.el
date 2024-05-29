@@ -130,7 +130,7 @@
 
 ;;;###autoload
 ;; simple-call-tree-info: CHECK  
-(cl-defun org-table-insert-or-delete-vline (&optional ndelete)
+(defun org-table-insert-or-delete-vline (&optional ndelete)
   "Insert a vertical line in the current column, or delete some if NDELETE is non-nil.
   If NDELETE is a positive integer, or if called interactively with a positive numeric prefix arg, 
   then NDELETE of the following vertical lines will be deleted. If NDELETE is negative then 
@@ -315,7 +315,7 @@ If REPEAT is supplied then repeat this process REPEAT times."
 
 ;;;###autoload
 ;; simple-call-tree-info: CHECK  is this interactive?
-(cl-defun org-table-grab-columns (top bottom arg &optional kill)
+(defun org-table-grab-columns (top bottom arg &optional kill)
   "Copy/kill columns or region of table and return as list(s).
   The return value is a list of lists - one for each row of the copied/killed data.
   If KILL is non-nill clear the copied fields, otherwise leave them.
@@ -988,37 +988,37 @@ Optional argument VAL (a string) will be used to fill the cells of the table."
 
 ;; TODO: could use -interleave, mapcar and flatten to do this (preferred if not slower)
 ;; simple-call-tree-info: TODO
-(cl-defun org-table-cbind (tbls &optional padding)
+(defun org-table-cbind (tbls &optional padding)
   "Join tables in TBLS (each represented as a lists of lists) together horizontally to form columns of new table.
 If the tables have different numbers of rows then extra cells will be added to the end of some columns
 to fill the gaps. These extra cells will be filled with the empty string by default, or you can supply a different
 padding string with the optional PADDING arg.
 hlines will be removed from the tables before joining them."
   (let* ((tbls (mapcar (cur 'delq 'hline) (delq nil tbls)))
-         (maxrows (-max (mapcar 'length tbls))))
+	 (maxrows (-max (mapcar 'length tbls))))
     (loop for n from 0 to (1- maxrows)
-          collect (loop for tbl in tbls
-                        append (or (nth n tbl)
-                                   (make-list (org-table-ncols tbl) padding))))))
+	  collect (loop for tbl in tbls
+			append (or (nth n tbl)
+				   (make-list (org-table-ncols tbl) padding))))))
 
 ;; simple-call-tree-info: DONE
-(cl-defun org-table-rbind (tbls &optional padding)
+(defun org-table-rbind (tbls &optional padding)
   "Join tables in TBLS (each represented as a lists of lists) together vertically to form rows of new table.
 If the tables have different numbers of columns then extra cells will be added to the end of some
 rows to fill the gaps. These extra cells will be filled with the empty string by default, or you can supply
 a different padding string with the optional PADDING arg.
 hlines will be removed from the tables before joining them."
   (let* ((tbls (mapcar (cur 'delq 'hline) (delq nil tbls)))
-         (widths (mapcar 'org-table-ncols tbls))
-         (maxwidth (-max widths)))
+	 (widths (mapcar 'org-table-ncols tbls))
+	 (maxwidth (-max widths)))
     (loop for tbl in tbls
-          for width in widths
-          append (if (< width maxwidth) 
-                     (org-table-cbind
-                      (list tbl
-                            (org-table-create-new (length tbl)
-                                                  (- maxwidth width) padding)))
-                   tbl))))
+	  for width in widths
+	  append (if (< width maxwidth) 
+		     (org-table-cbind
+		      (list tbl
+			    (org-table-create-new (length tbl)
+						  (- maxwidth width) padding)))
+		   tbl))))
 
 ;; simple-call-tree-info: DONE
 (defun org-table-rbind-named (tblnames &optional namescol padding)
@@ -1041,7 +1041,7 @@ If the PADDING arg is supplied it should be a string to use for padding extra ce
 
 ;; TODO: Selecting rows/columns by index could be done much faster (see -slice and -select-by-indices in dash.el)
 ;; simple-call-tree-info: REFACTOR
-(cl-defun org-table-filter-list (lst &optional cols rows filter)
+(defun org-table-filter-list (lst &optional cols rows filter)
   "Filter out rows and columns of a matrix LST represented as a list of lists.
 
 Optional arguments ROWS & COLS are used to indicate which rows and columns to use.
