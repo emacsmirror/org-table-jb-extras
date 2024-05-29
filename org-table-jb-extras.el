@@ -42,12 +42,19 @@
 
 ;;; Commentary: 
 ;;
+;; Bitcoin donations gratefully accepted: 16xSxS5v7rpknr4WL8unwCRab5nZEfc7eK
+;;
+;; This library contains many extra functions & commands for dealing with org-tables which are documented below.
+;; Most of the functions useful to users can be accessed through a single command: `org-table-dispatch'.
 ;; When `org-table-dispatch' is called while point is in an org-table an ido menu of possible
 ;; actions from `org-table-dispatch-actions' is offered to the user. These actions include:
 ;; "copy table", "copy rectangle", "kill/clear cells", "export to file", "copy cols to calc",
 ;; "plot graph", "fit curve to cols", "transpose table", "split/join columns", "join rows/flatten columns",
-;; "toggle display of row/column refs".
-;; 
+;; "toggle display of row/column refs", "Hide/show column", "Narrow column", "Narrow table", "Fill empty cells",
+;; "Insert vertical line", etc.
+;; Another useful function is `org-dblock-write:tablefilter', a dynamic block function which can be used for
+;; filtering the rows of a table into another one. 
+;; For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
 ;; 
 ;;;;;;;;
 
@@ -86,6 +93,8 @@
 ;;    List of graph types for `org-plot/gnuplot'.
 ;;  `org-table-dispatch-actions'
 ;;    Actions that can be applied when `org-table-dispatch' is called.
+;;  `org-table-filter-function-bindings'
+;;    Function bindings for use by the filter function in dynamic blocks created by ‘org-dblock-write:tablefilter’.
 ;;
 ;; All of the above can be customized by:
 ;;      M-x customize-group RET org-table RET
@@ -524,8 +533,6 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 					      (string-match "\\<kill\\>" (car pair))))
       (funcall func))))
 
-;; Insert a file and convert it to an org table
-;;# (message "insert-file-as-org-table")
 ;;;###autoload
 (defun insert-file-as-org-table (filename)
   "Insert a file into the current buffer at point, and convert it to an org table."
@@ -751,6 +758,46 @@ not used."
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
 ;; and the width of the table, etc.
 ;; TODO: org-table-squash; opposite of org-table-narrow, it joins adjacent rows together
+
+;;;###autoload
+;; simple-call-tree-info: DONE  
+(defcustom org-table-filter-function-bindings 
+  '(((num (x) (string-to-number x)) . "Convert a string to a number.")
+    ((days-to-now (x) (condition-case nil (org-time-stamp-to-now x) (error nil))) . "Number of days from org timestamp string arg to now.")
+    ((seconds-to-now (x) (condition-case nil (org-time-stamp-to-now x t) (error nil))) . "Number of seconds from org timestamp string arg to now.")
+    ((stime (x) (condition-case nil (org-time-string-to-seconds x) (error nil))) . "Convert an org timestamp string to number of seconds since the epoch (1970-01-01 01:00)")
+    ((dtime (x) (condition-case nil (org-time-string-to-absolute x) (error nil))) . "Convert an org timestamp to number of days since 0000-12-30")
+    ((year (x) (condition-case nil (string-to-number
+                                    (format-time-string "%Y" (org-time-string-to-time x)))
+                 (error nil))) . "The year of org timestamp arg (as a number)")
+    ((month (x) (condition-case nil (string-to-number (format-time-string "%m" (org-time-string-to-time x)))
+                  (error nil))) . "The month of org timestamp arg (as a number)")
+    ((yearday (x) (condition-case nil (string-to-number (format-time-string "%j" (org-time-string-to-time x)))
+                    (error nil))) . "The yearday of org timestamp arg (as a number)")
+    ((monthday (x) (condition-case nil (string-to-number (format-time-string "%d" (org-time-string-to-time x)))
+                     (error nil))) . "The monthday of org timestamp arg (as a number)")
+    ((weekday (x) (condition-case nil (string-to-number (format-time-string "%w" (org-time-string-to-time x)))
+                    (error nil))) . "The weekday of org timestamp arg (as a number, Sunday is 0)")
+    ((hrs (x) (condition-case nil (string-to-number (format-time-string "%H" (org-time-string-to-time x)))
+                (error nil))) . "The hour of org timestamp arg (as a number)")
+    ((mins (x) (condition-case nil (string-to-number (format-time-string "%M" (org-time-string-to-time x)))
+                 (error nil))) . "The minute of org timestamp arg (as a number)")
+    ((secs (x) (condition-case nil (string-to-number (format-time-string "%S" (org-time-string-to-time x)))
+                 (error nil))) . "The second of org timestamp arg (as a number)")
+    ((gt (x y) (and x y (> x y))) . "Non-nil if x > y (and both x & y are non-nil)")
+    ((lt (x y) (and x y (< x y))) . "Non-nil if x < y (and both x & y are non-nil)")
+    ((gteq (x y) (and x y (>= x y))) . "Non-nil if x >= y (and both x & y are non-nil)")
+    ((lteq (x y) (and x y (<= x y))) . "Non-nil if x <= y (and both x & y are non-nil)")
+    ((between (x y z &optional excly exclz) (org-table-between x y z excly exclz)) . "Non-nil if X is a value/date/string between Y & Z (see `org-table-between')")
+    ((rowmatch (regex) (some (lambda (x) (string-match regex x)) row)) . "Non-nil if REGEX matches any column in a row")
+    ((rowsum nil (-sum (mapcar 'string-to-number row))) . "Sum the numbers in all the columns of a row."))
+  "Function bindings for use by the filter function in dynamic blocks created by `org-dblock-write:tablefilter'.
+These bindings will be used in a `cl-flet' form wrapped around the call to `org-table-filter-list',
+and so you should be careful not to shadow any existing functions used by `org-table-filter-list'.
+The bindings will be created after the default row and column variables in `org-table-filter-list' have been created,
+ and so the functions may make use of those variables."
+  :group 'org-table
+  :type '(repeat (cons sexp string)))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-timestamp-p (x)

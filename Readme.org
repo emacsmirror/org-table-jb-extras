@@ -22,12 +22,19 @@ org-mode cl-lib ido-choose-function
 
 * Commentary
 
+Bitcoin donations gratefully accepted: 16xSxS5v7rpknr4WL8unwCRab5nZEfc7eK
+
+This library contains many extra functions & commands for dealing with org-tables which are documented below.
+Most of the functions useful to users can be accessed through a single command: `org-table-dispatch'.
 When `org-table-dispatch' is called while point is in an org-table an ido menu of possible
 actions from `org-table-dispatch-actions' is offered to the user. These actions include:
 "copy table", "copy rectangle", "kill/clear cells", "export to file", "copy cols to calc",
 "plot graph", "fit curve to cols", "transpose table", "split/join columns", "join rows/flatten columns",
-"toggle display of row/column refs". For more details see the documentation of the functions
-listed in `org-table-dispatch-actions'.
+"toggle display of row/column refs", "Hide/show column", "Narrow column", "Narrow table", "Fill empty cells",
+"Insert vertical line", etc.
+Another useful function is `org-dblock-write:tablefilter', a dynamic block function which can be used for
+filtering the rows of a table into another one. 
+For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
 
 * Commands & keybindings
 
@@ -64,4 +71,5 @@ listed in `org-table-dispatch-actions'.
     List of graph types for  - *org-plot/gnuplot* :.\\
    - *org-table-dispatch-actions* :
     Actions that can be applied when  - *org-table-dispatch* : is called.\\
-
+   - *org-table-filter-function-bindings* :
+    Function bindings for use by the filter function in dynamic blocks created by ‘org-dblock-write:tablefilter’.
