@@ -17,7 +17,7 @@
 ;;
 ;; Features that might be required by this library:
 ;;
-;; org cl-lib ido-choose-function
+;; org cl-lib ido-choose-function ampl-mode
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -106,6 +106,7 @@
 (require 'cl-lib)
 (require 'ido-choose-function)
 (require 'dash)
+(require 'ampl-mode nil t) ;; my version which contains `run-ampl-async'
 ;;; Code:
 
 ;; REMEMBER TODO ;;;###autoload's 
@@ -589,92 +590,93 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 		  table)))
 
 ;;;###autoload
-(defun org-table-narrow (width &optional arg fixedcols)
-  "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
+(when (fboundp 'run-ampl-async)
+  (defun org-table-narrow (width &optional arg fixedcols)
+    "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 FIXEDCOLS should be a list of indices of the columns that shouldn't be narrowed (starting at 0).
 New cells added beneath those that don't need to be split will be left empty.
 If ARG is non-nil, or if a prefix arg is used when called interactively, then put horizontal lines between
 sets of rows in the new table corresponding with rows in the original table."
-  (interactive (let* ((tblstart (org-table-begin))
-		      (lineend (save-excursion (goto-char tblstart) (line-end-position)))
-		      (numcols 0)
-		      (hist (progn (save-excursion (goto-char tblstart)
-						   (while (search-forward "|" lineend t)
-						     (setq numcols (1+ numcols))))
-				   (cons (mapconcat 'number-to-string (number-sequence 0 (- numcols 2)) " ")
-					 minibuffer-history)))
-		      (str (read-string "Indices of fixed columns (press <up> to see full list, default = None): "
-					nil 'hist)))
-		 (list
-		  (read-number (format "New table width (current width = %s): "
-				       (- lineend tblstart)))
-		  current-prefix-arg
-		  (progn (while (not (string-match "^[0-9 ]*$" str))
-			   (setq str (read-string "Indices of fixed columns (space separated): ")))
-			 (mapcar 'string-to-number
-				 (cl-remove "" (split-string str "\\s-+") :test 'equal))))))
-  (unless (org-at-table-p) (error "Not in an org-mode table"))
-  (let* ((table (org-table-to-lisp))
-	 (nrows (length table))
-	 (ncols (length (cl-find-if 'listp table)))
-	 (colwidths (org-table-get-column-widths table))
-	 (freecols (-difference (number-sequence 0 (1- ncols)) fixedcols))
-	 (inputstr (mapconcat 'number-to-string ;; input data for AMPL
-			      (append (list nrows (length freecols)
-					    (- width
-					       (apply '+ (-select-by-indices fixedcols colwidths))))
-				      (mapcan (lambda (row)
-						(if (symbolp row)
-						    (make-list (length freecols) 0)
-						  (mapcar 'length (-select-by-indices freecols row))))
-					      table))
-			      " "))
-	 (outbuf "*org-table AMPL output*")
-	 (errbuf "*org-table AMPL error*")
-	 (curline (org-table-current-line))
-	 (curcol (org-table-current-column))
-	 (startpos (org-table-begin))
-	 (endpos (org-table-end))
-	 amplproc rowcounts newwidths newrows)
-    (setq amplproc (run-ampl-async inputstr outbuf errbuf
-				   (list
-				    (concat (file-name-directory (locate-library "org-table-jb-extras"))
-					    "table_widths.mod"))))
-    (while (not (memq (process-status amplproc) '(exit signal)))
-      (sit-for 0.1))
-    (if (with-current-buffer errbuf
-	  (search-backward "AMPL command executed successfully" nil t))
-	(with-current-buffer outbuf
-	  (goto-char (point-min))
-	  (search-forward "Widths: ")
-	  (setq newwidths (mapcar 'string-to-number
-				  (split-string (string-trim (buffer-substring (point) (point-at-eol)))
-						"\\s-+")))
-	  (dotimes (i (length freecols))
-	    (setf (nth (nth i freecols) colwidths) (nth i newwidths)))
-	  (search-forward "Rows: ")
-	  (setq rowcounts (mapcar 'string-to-number
-				  (split-string (string-trim (buffer-substring (point) (point-at-eol)))
-						"\\s-+"))))
-      (error "AMPL error. See %s buffer for details" errbuf))
-    (if (-any? 'zerop newwidths)
-	(message "Unable to narrow table to desired width")
-      (setq newrows (--map (let* ((row (nth it table)))
-			     (if (> (nth it rowcounts) 1)
-				 (apply '-zip-lists-fill ""
-					(--zip-with (split-string (s-word-wrap it other) "\n")
-						    colwidths row))
-			       (list row)))
-			   (number-sequence 0 (1- nrows))))
-      (delete-region startpos endpos)
-      (goto-char startpos)
-      (dolist (row (apply 'append (if arg (-interpose '(hline) newrows) newrows)))
-	(if (eq row 'hline)
-	    (insert "|-\n")
-	  (insert "| " (mapconcat 'identity row " | ") " |\n")))
-      (org-table-align)
-      (org-table-goto-line curline)
-      (org-table-goto-column curcol))))
+    (interactive (let* ((tblstart (org-table-begin))
+			(lineend (save-excursion (goto-char tblstart) (line-end-position)))
+			(numcols 0)
+			(hist (progn (save-excursion (goto-char tblstart)
+						     (while (search-forward "|" lineend t)
+						       (setq numcols (1+ numcols))))
+				     (cons (mapconcat 'number-to-string (number-sequence 0 (- numcols 2)) " ")
+					   minibuffer-history)))
+			(str (read-string "Indices of fixed columns (press <up> to see full list, default = None): "
+					  nil 'hist)))
+		   (list
+		    (read-number (format "New table width (current width = %s): "
+					 (- lineend tblstart)))
+		    current-prefix-arg
+		    (progn (while (not (string-match "^[0-9 ]*$" str))
+			     (setq str (read-string "Indices of fixed columns (space separated): ")))
+			   (mapcar 'string-to-number
+				   (cl-remove "" (split-string str "\\s-+") :test 'equal))))))
+    (unless (org-at-table-p) (error "Not in an org-mode table"))
+    (let* ((table (org-table-to-lisp))
+	   (nrows (length table))
+	   (ncols (length (cl-find-if 'listp table)))
+	   (colwidths (org-table-get-column-widths table))
+	   (freecols (-difference (number-sequence 0 (1- ncols)) fixedcols))
+	   (inputstr (mapconcat 'number-to-string ;; input data for AMPL
+				(append (list nrows (length freecols)
+					      (- width
+						 (apply '+ (-select-by-indices fixedcols colwidths))))
+					(mapcan (lambda (row)
+						  (if (symbolp row)
+						      (make-list (length freecols) 0)
+						    (mapcar 'length (-select-by-indices freecols row))))
+						table))
+				" "))
+	   (outbuf "*org-table AMPL output*")
+	   (errbuf "*org-table AMPL error*")
+	   (curline (org-table-current-line))
+	   (curcol (org-table-current-column))
+	   (startpos (org-table-begin))
+	   (endpos (org-table-end))
+	   amplproc rowcounts newwidths newrows)
+      (setq amplproc (run-ampl-async inputstr outbuf errbuf
+				     (list
+				      (concat (file-name-directory (locate-library "org-table-jb-extras"))
+					      "table_widths.mod"))))
+      (while (not (memq (process-status amplproc) '(exit signal)))
+	(sit-for 0.1))
+      (if (with-current-buffer errbuf
+	    (search-backward "AMPL command executed successfully" nil t))
+	  (with-current-buffer outbuf
+	    (goto-char (point-min))
+	    (search-forward "Widths: ")
+	    (setq newwidths (mapcar 'string-to-number
+				    (split-string (string-trim (buffer-substring (point) (point-at-eol)))
+						  "\\s-+")))
+	    (dotimes (i (length freecols))
+	      (setf (nth (nth i freecols) colwidths) (nth i newwidths)))
+	    (search-forward "Rows: ")
+	    (setq rowcounts (mapcar 'string-to-number
+				    (split-string (string-trim (buffer-substring (point) (point-at-eol)))
+						  "\\s-+"))))
+	(error "AMPL error. See %s buffer for details" errbuf))
+      (if (-any? 'zerop newwidths)
+	  (message "Unable to narrow table to desired width")
+	(setq newrows (--map (let* ((row (nth it table)))
+			       (if (> (nth it rowcounts) 1)
+				   (apply '-zip-lists-fill ""
+					  (--zip-with (split-string (s-word-wrap it other) "\n")
+						      colwidths row))
+				 (list row)))
+			     (number-sequence 0 (1- nrows))))
+	(delete-region startpos endpos)
+	(goto-char startpos)
+	(dolist (row (apply 'append (if arg (-interpose '(hline) newrows) newrows)))
+	  (if (eq row 'hline)
+	      (insert "|-\n")
+	    (insert "| " (mapconcat 'identity row " | ") " |\n")))
+	(org-table-align)
+	(org-table-goto-line curline)
+	(org-table-goto-column curcol)))))
 
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
