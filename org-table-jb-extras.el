@@ -515,14 +515,13 @@ If REPEAT is supplied then repeat this process REPEAT times."
 					 (lambda (lst) (org-table-to-calc (org-table-transpose lst) nil)
 					   (calc-curve-fit nil)))
 					("transpose table" . org-table-transpose-table-at-point)
-					("split/join columns" . org-table-insert-or-delete-vline)
+					("split/join columns (insert/delete vline)" . org-table-insert-or-delete-vline)
 					("join rows/flatten columns" . (lambda nil (call-interactively 'org-table-flatten-columns)))
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
 					("Narrow table" . (lambda nil (call-interactively 'org-table-narrow)))
-					("Fill empty cells" . (lambda nil (call-interactively 'org-table-fill-empty-cells)))
-					("Insert vertical line" . org-table-insert-or-delete-vline))
+					("Fill empty cells" . (lambda nil (call-interactively 'org-table-fill-empty-cells))))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -953,7 +952,7 @@ row by row, but you may transpose the table afterwards using `org-table-transpos
   "Insert org table (represented as a list of lists) at point."
   (org-table-lisp-to-string lst t))
 
-;; simple-call-tree-info: TODO
+;; simple-call-tree-info: TODO allow selecting rows by regexp?
 (defun org-table-insert-hlines (lst rows)
   "Insert hlines into an org table LST (represented as a list of lists).
 The hlines will be inserted at the row numbers in the list ROWS (starting
@@ -1039,7 +1038,6 @@ If the PADDING arg is supplied it should be a string to use for padding extra ce
             (org-table-cbind (list newcol newtbl))))
       newtbl)))
 
-;; TODO: Selecting rows/columns by index could be done much faster (see -slice and -select-by-indices in dash.el)
 ;; simple-call-tree-info: REFACTOR
 (defun org-table-filter-list (lst &optional cols rows filter)
   "Filter out rows and columns of a matrix LST represented as a list of lists.
@@ -1086,9 +1084,7 @@ row     : A list containing all the items in the current row in order, as string
          (filter2 (if filter
                       `(lambda (row)
                          (let* ,(mapcan (lambda (x)
-                                          ;; TODO: try using progv here
-                                          (let* ((colnum (number-to-string x))
-                                                 (varname (concat "c" colnum))
+                                          (let* ((varname (concat "c" (number-to-string x)))
                                                  (var (intern varname))
                                                  (numvar (intern (concat varname "n"))))
                                             `((,var (if (not (equal (nth ,(1- x) row) ""))
