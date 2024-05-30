@@ -132,9 +132,9 @@
 ;; simple-call-tree-info: CHECK  
 (defun org-table-insert-or-delete-vline (&optional ndelete)
   "Insert a vertical line in the current column, or delete some if NDELETE is non-nil.
-  If NDELETE is a positive integer, or if called interactively with a positive numeric prefix arg, 
-  then NDELETE of the following vertical lines will be deleted. If NDELETE is negative then 
-  previous vertical lines will be deleted."
+If NDELETE is a positive integer, or if called interactively with a positive numeric prefix arg, 
+then NDELETE of the following vertical lines will be deleted. If NDELETE is negative then 
+previous vertical lines will be deleted."
   (interactive (list (and current-prefix-arg
 			  (prefix-numeric-value current-prefix-arg))))
   (if ndelete (dotimes (x (abs ndelete))
@@ -142,7 +142,8 @@
 		    (re-search-backward "|\\|+" (line-beginning-position))
 		  (re-search-forward "|\\|+" (line-end-position))
 		  (forward-char -1))
-		(org-table-delete-vline))
+		(org-table-delete-vline)
+		(org-table-align))
     (let ((startn (save-excursion
 		    (re-search-backward org-table-vline-delim-regexp)
 		    (line-number-at-pos)))
@@ -516,12 +517,12 @@ If REPEAT is supplied then repeat this process REPEAT times."
 					   (calc-curve-fit nil)))
 					("transpose table" . org-table-transpose-table-at-point)
 					("split/join columns (insert/delete vline)" . org-table-insert-or-delete-vline)
-					("join rows/flatten columns" . (lambda nil (call-interactively 'org-table-flatten-columns)))
+					("join rows/flatten columns" . org-table-flatten-columns)
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
 					("Hide/show column" . org-table-toggle-column-width)
-					("Narrow column" . (lambda nil (call-interactively 'org-table-narrow-column)))
-					("Narrow table" . (lambda nil (call-interactively 'org-table-narrow)))
-					("Fill empty cells" . (lambda nil (call-interactively 'org-table-fill-empty-cells))))
+					("Narrow column" . org-table-narrow-column)
+					("Narrow table" . org-table-narrow)
+					("Fill empty cells" . org-table-fill-empty-cells))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -536,9 +537,9 @@ Each element should be of the form (NAME . FUNC) where NAME is a name for the ac
 (defun org-table-dispatch nil
   "Do something with column(s) of org-table at point.
 Prompt the user for an action in `org-table-dispatch-actions' and apply the corresponding function.
-  If the function takes a single argument then pass in a subtable list obtained from `org-table-grab-columns'.
-  If in addition, the name of the action contains the word \"kill\" then the cells in the selected columns/region 
-  will be cleared."
+If the function takes a single argument then pass in a subtable list obtained from `org-table-grab-columns'.
+If in addition, the name of the action contains the word \"kill\" then the cells in the selected columns/region 
+will be cleared."
   (interactive)
   (let* ((pair (assoc (ido-completing-read "Action: " (mapcar 'car org-table-dispatch-actions))
 		      org-table-dispatch-actions))
@@ -549,7 +550,9 @@ Prompt the user for an action in `org-table-dispatch-actions' and apply the corr
 					      (if (region-active-p) (region-end))
 					      current-prefix-arg
 					      (string-match "\\<kill\\>" (car pair))))
-      (funcall func))))
+      (if (commandp func)
+	  (call-interactively func)
+	(funcall func)))))
 
 ;;;###autoload
 ;; simple-call-tree-info: DONE  
