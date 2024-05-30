@@ -559,6 +559,11 @@ will be cleared."
       (if (commandp func)
 	  (call-interactively func)
 	(funcall func)))))
+;; Add to org-table menu
+(easy-menu-add-item org-tbl-menu nil ["Ido select table action..." org-table-dispatch (org-at-table-p)])
+(easy-menu-add-item orgtbl-mode-menu nil ["Ido select table action..." org-table-dispatch (org-at-table-p)])
+;;(easy-menu-remove-item org-tbl-menu nil "Ido select table action...")
+;;(easy-menu-remove-item orgtbl-mode-menu nil "Ido select table action...")
 
 ;;;###autoload
 ;; simple-call-tree-info: DONE  
