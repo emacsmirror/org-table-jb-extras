@@ -522,7 +522,8 @@ If REPEAT is supplied then repeat this process REPEAT times."
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . org-table-narrow-column)
 					("Narrow table" . org-table-narrow)
-					("Fill empty cells" . org-table-fill-empty-cells))
+					("Fill empty cells" . org-table-fill-empty-cells)
+					("Move current cell" . org-table-move-cell))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -1202,6 +1203,13 @@ that rows in which c3 is empty dont cause an error):
                                      cols rows (if noerrors
                                                    `(condition-case nil ,filter (error nil))
                                                  filter)))))))
+
+(defun org-table-move-cell nil
+  "Prompt for a direction and move the current cell in that direction.
+The cell will swap places with the one in the direction chosen."
+  (interactive)
+  (org-table--move-cell (intern (completing-read "Direction: " '("up" "down" "left" "right"))))
+  (org-table-align))
 
 (provide 'org-table-jb-extras)
 
