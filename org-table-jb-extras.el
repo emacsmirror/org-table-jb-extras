@@ -541,7 +541,13 @@ If the function takes a single argument then pass in a subtable list obtained fr
 If in addition, the name of the action contains the word \"kill\" then the cells in the selected columns/region 
 will be cleared."
   (interactive)
-  (let* ((pair (assoc (ido-completing-read "Action: " (mapcar 'car org-table-dispatch-actions))
+  (let* ((pair (assoc (ido-completing-read "Action: "
+					   (mapcar
+					    (lambda (x)
+					      (concat (car x)
+						      (let ((keyseq (where-is-internal (cdr x))))
+							(if keyseq (concat " (" (key-description (car keyseq)) ")")))))
+					    org-table-dispatch-actions))
 		      org-table-dispatch-actions))
 	 (func (cdr pair)))
     (if (and (listp func)
