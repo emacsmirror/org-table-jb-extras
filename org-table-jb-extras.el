@@ -1071,7 +1071,7 @@ If the optional argument NAMESCOL is non-nil an extra column will be added conta
 corresponding to each row. If NAMESCOL is 'last the new column will be made the final column, for any other non-nil
 value it will be made the first column.
 If the PADDING arg is supplied it should be a string to use for padding extra cells (see `org-table-rbind')."
-  (let* ((tables (mapcar* 'org-table-fetch tblnames (make-list (length tblnames) t)))
+  (let* ((tables (cl-mapcar 'org-table-fetch tblnames (make-list (length tblnames) t)))
          (newtbl (org-table-rbind tables padding)))
     (aif namescol
         (let ((newcol (loop for tbl in tables
@@ -1255,7 +1255,15 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (matchcell REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
  (hline-p &optional ROFFSET): a wrapper around `org-table-relative-hline-p'
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
- (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.")
+ (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.
+
+It can also make use of the following variables:
+
+ numdlines: the number of data lines in the table
+ numcols: the number of columns
+ searchdir: the current direction of search ('up,'down,'left or 'right)
+ count: the number of fields traversed since the last match
+ startpos: the position of point before starting.")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil)
@@ -1359,11 +1367,11 @@ if ARG is negative."
     (setq arg 1))
   (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
 	   (org-table-analyze)
-	   (let* ((ndlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
-		  (ncols org-table-current-ncol)
+	   (let* ((numdlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
+		  (numcols org-table-current-ncol)
 		  (move-next-field (lambda nil
-				     (if (and (= (org-table-current-column) ncols)
-					      (= (org-table-current-line) ndlines))
+				     (if (and (= (org-table-current-column) numcols)
+					      (= (org-table-current-line) numdlines))
 					 (next-line)
 				       (org-table-next-field))))
 		  (searchdir (car org-table-jump-condition))
