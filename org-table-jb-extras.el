@@ -1271,7 +1271,8 @@ It can also make use of the following variables:
   (this could be useful for performing different jumps for different prefix args).")
 
 ;; simple-call-tree-info: DONE
-(defvar org-table-jump-condition-history nil)
+(defvar org-table-jump-condition-history nil
+  "History list of `org-table-set-jump-condition'")
 
 ;; simple-call-tree-info: CHECK
 (defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 1))
