@@ -1266,7 +1266,9 @@ It can also make use of the following variables:
  currentline: the current line number
  searchdir: the current direction of search ('up,'down,'left or 'right)
  fieldcount: the number of fields traversed since the last match
- startpos: the position of point before starting.")
+ startpos: the position of point before starting
+ prefixarg: the prefix arg converted to a number 
+  (this could be useful for performing different jumps for different prefix args).")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil)
@@ -1382,48 +1384,69 @@ if b is a list check (and (>= c (first b)) (<= c (second b)))"
 			       counts bounds)))
 
 ;; simple-call-tree-info: DONE
-(defun org-table-jump-next (arg)
+(defun org-table-jump-next (prefixarg)
   "Jump to the next cell in the org-table at point matching `org-table-jump-condition'.
-When called interactively with a numeric prefix ARG, jump to the ARG'th next cell or -ARG'th previous cell
-if ARG is negative."
+When called interactively with a numeric PREFIXARG, jump to the PREFIXARG'th next cell or -PREFIXARG'th previous cell
+if PREFIXARG is negative."
   (interactive "p")
   (when (equal current-prefix-arg '(4))
     (call-interactively 'org-table-set-jump-condition)
-    (setq arg 1))
-  (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
-	   (org-table-analyze)
-	   (let* ((numdlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
-		  (numcols org-table-current-ncol)
-		  (move-next-field (lambda nil
-				     (if (and (= currentcol numcols)
-					      (= currentline numdlines))
-					 (next-line)
-				       (org-table-next-field))))
-		  (searchdir (car org-table-jump-condition))
-		  (movefn (case searchdir
-			    (up (if (> ,arg 0) 'previous-line 'next-line))
-			    (down (if (> ,arg 0) 'next-line 'previous-line))
-			    (left (if (> ,arg 0) 'org-table-previous-field move-next-field))
-			    (right (if (> ,arg 0) move-next-field 'org-table-previous-field))
-			    (t (error "Invalid `org-table-jump-condition'"))))
-		  (fieldcount 0)
-		  (matchcount 0)
-		  (startpos (point))
-		  (currentcol (org-table-current-column))
-		  (currentline (org-table-current-line)))
-	     (while (< matchcount (abs ,arg))
-	       (funcall movefn)
-	       (setq fieldcount 1
-		     currentcol (org-table-current-column)
-		     currentline (org-table-current-line))
-	       (while (and (org-at-table-p)
-			   (not ,(cdr org-table-jump-condition)))
-		 (funcall movefn)
-		 (setq fieldcount (1+ fieldcount)
-		       currentcol (org-table-current-column)
-		       currentline (org-table-current-line)))
-	       (incf matchcount))
-	     (if (not (org-at-table-p)) (goto-char startpos))))))
+    (setq prefixarg 1))
+  (unless (org-at-table-p)
+    (error "Point is not in an org-table"))
+  (org-table-analyze)
+  (let* ((numdlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
+	 (numcols org-table-current-ncol)
+	 (currentcol (org-table-current-column))
+	 (currentline (org-table-current-line))
+	 (searchdir (car org-table-jump-condition))
+	 (move-next-field (lambda nil
+			    (if (or (/= currentcol numcols)
+				    (/= currentline numdlines))
+				(org-table-next-field)
+			      (org-table-goto-line 1)
+			      (org-table-goto-column 1))))
+	 (move-previous-field (lambda nil
+				(if (or (/= currentcol 1)
+					(/= currentline 1))
+				    (org-table-previous-field)
+				  (org-table-goto-line numdlines)
+				  (org-table-goto-column numcols))))
+	 (move-up-field (lambda nil (if (/= currentline 1)
+					(progn (forward-line -1)
+					       (org-table-goto-column currentcol))
+				      (org-table-goto-line numdlines)
+				      (org-table-goto-column
+				       (1+ (mod currentcol numcols))))))
+	 (move-down-field (lambda nil (if (/= currentline numdlines)
+					  (progn (forward-line 1)
+						 (org-table-goto-column currentcol))
+					(org-table-goto-line 1)
+					(org-table-goto-column
+					 (1+ (mod (- currentcol 2) numcols))))))
+	 (movefn (case searchdir
+		   (up (if (> prefixarg 0) move-up-field move-down-field))
+		   (down (if (> prefixarg 0) move-down-field move-up-field))
+		   (left (if (> prefixarg 0) move-previous-field move-next-field))
+		   (right (if (> prefixarg 0) move-next-field move-previous-field))
+		   (t (error "Invalid `org-table-jump-condition'"))))
+	 (fieldcount 0)
+	 (matchcount 0)
+	 (startpos (point)))
+    (while (< matchcount (abs prefixarg))
+      (funcall movefn)
+      (setq fieldcount 1
+	    currentcol (org-table-current-column)
+	    currentline (org-table-current-line))
+      (while (and (org-at-table-p)
+		  (not (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
+				,(cdr org-table-jump-condition)))))
+	(funcall movefn)
+	(setq fieldcount (1+ fieldcount)
+	      currentcol (org-table-current-column)
+	      currentline (org-table-current-line)))
+      (incf matchcount))
+    (if (not (org-at-table-p)) (goto-char startpos))))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-jump-prev (arg)
