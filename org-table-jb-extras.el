@@ -1395,8 +1395,8 @@ if ARG is negative."
 	   (let* ((numdlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
 		  (numcols org-table-current-ncol)
 		  (move-next-field (lambda nil
-				     (if (and (= (org-table-current-column) numcols)
-					      (= (org-table-current-line) numdlines))
+				     (if (and (= currentcol numcols)
+					      (= currentline numdlines))
 					 (next-line)
 				       (org-table-next-field))))
 		  (searchdir (car org-table-jump-condition))
@@ -1409,7 +1409,8 @@ if ARG is negative."
 		  (fieldcount 0)
 		  (matchcount 0)
 		  (startpos (point))
-		  currentcol currentline)
+		  (currentcol (org-table-current-column))
+		  (currentline (org-table-current-line)))
 	     (while (< matchcount (abs ,arg))
 	       (funcall movefn)
 	       (setq fieldcount 1
