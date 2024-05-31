@@ -1297,13 +1297,15 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 (cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0))
   "Return the contents of the field in row (current row + ROFFSET) & column (current column + COFFSET)."
   (save-excursion
-    (when (/= roffset 0)
-      (let ((col (org-table-current-column)))
-	(org-table-goto-line (+ (org-table-current-line) roffset))
-	(org-table-goto-column col)))
-    (org-table-get-field
-     (when (/= coffset 0)
-       (+ (org-table-current-column) coffset)))))
+    (let ((intable t))
+      (when (/= roffset 0)
+	(let ((col (org-table-current-column)))
+	  (setq intable (org-table-goto-line (+ (org-table-current-line) roffset)))
+	  (org-table-goto-column col)))
+      (if intable
+	  (org-table-get-field (when (/= coffset 0)
+				 (+ (org-table-current-column) coffset)))
+	""))))
 
 ;; simple-call-tree-info: CHECK  
 (defun org-table-match-relative-field (regex &optional roffset coffset)
