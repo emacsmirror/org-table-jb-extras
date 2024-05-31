@@ -1255,6 +1255,7 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (matchcell REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
  (hline-p &optional ROFFSET): a wrapper around `org-table-relative-hline-p'
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
+ (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
  (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.
 
 It can also make use of the following variables:
@@ -1269,7 +1270,10 @@ It can also make use of the following variables:
 (defvar org-table-jump-condition-history nil)
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("Enter manually" . nil))
+(defcustom org-table-jump-condition-presets '(("Every other cell" . (> fieldcount 0))
+					      ("Non-empty cells above empty ones" .
+					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
+					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
 evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
@@ -1294,8 +1298,9 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
   "Return the contents of the field in row (current row + ROFFSET) & column (current column + COFFSET)."
   (save-excursion
     (when (/= roffset 0)
-      (org-table-goto-line
-       (+ (org-table-current-line) roffset)))
+      (let ((col (org-table-current-column)))
+	(org-table-goto-line (+ (org-table-current-line) roffset))
+	(org-table-goto-column col)))
     (org-table-get-field
      (when (/= coffset 0)
        (+ (org-table-current-column) coffset)))))
