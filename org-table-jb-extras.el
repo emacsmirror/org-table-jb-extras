@@ -1314,7 +1314,8 @@ in row (current row + ROFFSET) & column (current COLUMN + COFFSET)."
 (defun org-table-count-matching-fields (direction &rest regexs)
   "Count fields matching REGEXS sequentially in a given DIRECTION.
 DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction
-of movement from the current field.
+of movement from the current field, or if used in `org-table-jump-condition'
+the variable `searchdir' can be used for the current direction of search.
 Starting with the current field, fields are traversed sequentially in
 the given DIRECTION and matched against the first regexp, when the first
 mismatch occurs the next regexp is tried and used for matching subsequent
@@ -1330,7 +1331,8 @@ This can be used for finding cells based on the content of neighbouring cells."
 	  (up (decf r))
 	  (down (incf r))
 	  (left (decf c))
-	  (right (incf c)))))
+	  (right (incf c))
+	  (t (error "Invalid direction")))))
     counts))
 
 ;; simple-call-tree-info: CHECK  
@@ -1364,21 +1366,22 @@ if ARG is negative."
 					      (= (org-table-current-line) ndlines))
 					 (next-line)
 				       (org-table-next-field))))
-		  (movefn (case (car org-table-jump-condition)
+		  (searchdir (car org-table-jump-condition))
+		  (movefn (case searchdir
 			    (up (if (> ,arg 0) 'previous-line 'next-line))
 			    (down (if (> ,arg 0) 'next-line 'previous-line))
 			    (left (if (> ,arg 0) 'org-table-previous-field move-next-field))
 			    (right (if (> ,arg 0) move-next-field 'org-table-previous-field))
 			    (t (error "Invalid `org-table-jump-condition'"))))
 		  (count 0)
-		  (pos (point)))
+		  (startpos (point)))
 	     (while (< count (abs ,arg))
 	       (funcall movefn)
 	       (while (and (org-at-table-p)
 			   (not ,(cdr org-table-jump-condition)))
 		 (funcall movefn))
 	       (incf count))
-	     (if (not (org-at-table-p)) (goto-char pos))))))
+	     (if (not (org-at-table-p)) (goto-char startpos))))))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-jump-prev (arg)
