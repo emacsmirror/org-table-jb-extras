@@ -1277,6 +1277,8 @@ It can also make use of the following variables:
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
 					      ("First field" . (and (eq currentcol 1)
 								    (eq currentline 1)))
+					      ("Last field" . (and (eq currentcol numcols)
+								   (eq currentline numdlines)))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
