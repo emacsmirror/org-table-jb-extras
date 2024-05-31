@@ -1262,7 +1262,7 @@ It can also make use of the following variables:
  numdlines: the number of data lines in the table
  numcols: the number of columns
  searchdir: the current direction of search ('up,'down,'left or 'right)
- count: the number of fields traversed since the last match
+ fieldcount: the number of fields traversed since the last match
  startpos: the position of point before starting.")
 
 ;; simple-call-tree-info: DONE
@@ -1381,14 +1381,16 @@ if ARG is negative."
 			    (left (if (> ,arg 0) 'org-table-previous-field move-next-field))
 			    (right (if (> ,arg 0) move-next-field 'org-table-previous-field))
 			    (t (error "Invalid `org-table-jump-condition'"))))
-		  (count 0)
+		  (fieldcount 0)
+		  (matchcount 0)
 		  (startpos (point)))
-	     (while (< count (abs ,arg))
+	     (while (< matchcount (abs ,arg))
 	       (funcall movefn)
 	       (while (and (org-at-table-p)
 			   (not ,(cdr org-table-jump-condition)))
+		 (incf fieldcount)
 		 (funcall movefn))
-	       (incf count))
+	       (incf matchcount))
 	     (if (not (org-at-table-p)) (goto-char startpos))))))
 
 ;; simple-call-tree-info: DONE  
