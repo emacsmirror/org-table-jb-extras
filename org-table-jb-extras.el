@@ -1273,6 +1273,8 @@ It can also make use of the following variables:
 (defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 0))
 					      ("Has empty fields beneath" .
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
+					      ("First field" . (and (eq (org-table-current-column) 1)
+								    (eq (org-table-current-line) 1)))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
@@ -1286,7 +1288,7 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
   "Prompt the user for a DIRECTION and CONDITION for `org-table-jump-condition'."
   (interactive (list (intern (completing-read "Direction: " '(right down left up)))
 		     (or (cdr (assoc (and org-table-jump-condition-presets
-					  (completing-read "Jump to cells matching: "
+					  (completing-read "Jump to field matching: "
 							   org-table-jump-condition-presets))
 				     org-table-jump-condition-presets))
 			 (read (read-string "Condition (sexp): "
@@ -1297,14 +1299,15 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 (cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0))
   "Return the contents of the field in row (current row + ROFFSET) & column (current column + COFFSET)."
   (save-excursion
-    (let ((intable t))
+    (let ((intable t) col)
       (when (/= roffset 0)
-	(let ((col (org-table-current-column)))
-	  (setq intable (org-table-goto-line (+ (org-table-current-line) roffset)))
-	  (org-table-goto-column col)))
+	(setq col (org-table-current-column))
+	(setq intable (org-table-goto-line (+ (org-table-current-line) roffset)))
+	(org-table-goto-column col))
       (if intable
-	  (org-table-get-field (when (/= coffset 0)
-				 (+ (org-table-current-column) coffset)))
+	  (org-table-get-field
+	   (when (/= coffset 0)
+	     (+ (or col (org-table-current-column)) coffset)))
 	""))))
 
 ;; simple-call-tree-info: CHECK  
@@ -1395,6 +1398,7 @@ if ARG is negative."
 		  (startpos (point)))
 	     (while (< matchcount (abs ,arg))
 	       (funcall movefn)
+	       (setq fieldcount 0)
 	       (while (and (org-at-table-p)
 			   (not ,(cdr org-table-jump-condition)))
 		 (incf fieldcount)
