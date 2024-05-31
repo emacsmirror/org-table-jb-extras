@@ -1260,12 +1260,25 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil)
 
-;; simple-call-tree-info: TODO  select from preset conditions, or manually enter one
+;; simple-call-tree-info: CHECK
+(defcustom org-table-jump-condition-presets '(("Enter manually" . nil))
+  "Named presets for `org-table-jump-condition'.
+Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
+evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
+  :group 'org-table
+  :type '(alist :key-type (string :tag "Description")
+		:value-type (sexp :tag "Condition")))
+
+;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-condition (direction condition)
   "Prompt the user for a DIRECTION and CONDITION for `org-table-jump-condition'."
   (interactive (list (intern (completing-read "Direction: " '(right down left up)))
-		     (read (read-string "Condition (sexp): "
-					nil 'org-table-jump-condition-history))))
+		     (or (cdr (assoc (and org-table-jump-condition-presets
+					  (completing-read "Jump to cells matching: "
+							   org-table-jump-condition-presets))
+				     org-table-jump-condition-presets))
+			 (read (read-string "Condition (sexp): "
+					    nil 'org-table-jump-condition-history)))))
   (setq org-table-jump-condition (cons direction condition)))
 
 ;; simple-call-tree-info: CHECK  
@@ -1333,7 +1346,7 @@ if b is a list check (and (>= c (first b)) (<= c (second b)))"
 				   (and (>= c (first b)) (<= c (second b)))))
 			       counts bounds)))
 
-;; simple-call-tree-info: REFACTOR  
+;; simple-call-tree-info: DONE
 (defun org-table-jump-next (arg)
   "Jump to the next cell in the org-table at point matching `org-table-jump-condition'.
 When called interactively with a numeric prefix ARG, jump to the ARG'th next cell or -ARG'th previous cell
