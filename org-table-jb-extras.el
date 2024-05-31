@@ -856,7 +856,13 @@ not used."
     ((checkcounts (counts bounds) (org-table-check-bounds counts bounds)) .
      "Check BOUNDS of each number in COUNTS.")
     ((sumcounts (d &rest regexs) (apply '+ (apply 'org-table-check-bounds d regexs))) .
-     "Count total No. of matches to REGEXS sequentially in a given DIRECTION."))
+     "Count total No. of matches to REGEXS sequentially in a given DIRECTION.")
+    ((getvar (key) (cdr (assoc key org-table-jump-state))) .
+     "Get the value associated with KEY in `org-table-jump-state'.")
+    ((setvar (key val) (setf (alist-get key org-table-jump-state) val)) .
+     "Set the value associated with KEY in `org-table-jump-state' to VAL.")
+    ((checkvar (key &rest vals) (member (getvar key) vals)) .
+     "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise."))
   "Function bindings (with descriptions) used by `org-table-jump-condition' & `org-dblock-write:tablefilter'.
 These function bindings can be used in the cdr of `org-table-jump-condition', or the :filter parameter of
 a tablefilter dynamic block. For :filter parameters the functions are created after the default row & column
@@ -1244,7 +1250,7 @@ The cell will swap places with the one in the direction chosen."
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition (cons 'right t)
-  "Cons cell used by `org-table-jump' to determine next cell to jump to.
+  "Cons cell used by `org-table-jump-next' to determine next cell to jump to.
 The car should be a symbol to specify the direction of traversal across the org-table:
  'up/'down specify moving up/down the current column & stopping at the top/bottom,
  'left/'right specify moving across previous/next cells and stopping at the first/last cell.
@@ -1257,8 +1263,12 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
  (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.
+ (getvar KEY): get the value associated with KEY in `org-table-jump-state'.
+ (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
+ (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
 
-It can also make use of the following variables:
+getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next'.
+You can also make use of the following variables:
 
  numdlines: the number of data lines in the table
  numcols: the number of columns
@@ -1274,14 +1284,21 @@ It can also make use of the following variables:
 (defvar org-table-jump-condition-history nil
   "History list of `org-table-set-jump-condition'")
 
+(defvar org-table-jump-state nil
+  "State variable (alist) for use by `org-table-jump-next'.")
+
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 1))
+(defcustom org-table-jump-condition-presets '(("First/last field" . (or (and (eq currentcol 1)
+									     (eq currentline 1)
+									     (not (checkvar 'firstlast 'first))
+									     (setvar 'firstlast 'first))
+									(and (eq currentcol numcols)
+									     (eq currentline numdlines)
+									     (checkvar 'firstlast 'first)
+									     (setvar 'firstlast 'last))))
+					      ("Every 2nd field" . (> fieldcount 1))
 					      ("Has empty fields beneath" .
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
-					      ("First field" . (and (eq currentcol 1)
-								    (eq currentline 1)))
-					      ("Last field" . (and (eq currentcol numcols)
-								   (eq currentline numdlines)))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
