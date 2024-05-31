@@ -801,43 +801,73 @@ not used."
 
 ;;;###autoload
 ;; simple-call-tree-info: DONE  
-(defcustom org-table-filter-function-bindings 
+(defcustom org-table-filter-function-bindings
   '(((num (x) (string-to-number x)) . "Convert a string to a number.")
-    ((days-to-now (x) (condition-case nil (org-time-stamp-to-now x) (error nil))) . "Number of days from org timestamp string arg to now.")
-    ((seconds-to-now (x) (condition-case nil (org-time-stamp-to-now x t) (error nil))) . "Number of seconds from org timestamp string arg to now.")
-    ((stime (x) (condition-case nil (org-time-string-to-seconds x) (error nil))) . "Convert an org timestamp string to number of seconds since the epoch (1970-01-01 01:00)")
-    ((dtime (x) (condition-case nil (org-time-string-to-absolute x) (error nil))) . "Convert an org timestamp to number of days since 0000-12-30")
+    ((days-to-now (x) (condition-case nil (org-time-stamp-to-now x) (error nil))) .
+     "Number of days from org timestamp string arg to now.")
+    ((seconds-to-now (x) (condition-case nil (org-time-stamp-to-now x t) (error nil))) .
+     "Number of seconds from org timestamp string arg to now.")
+    ((stime (x) (condition-case nil (org-time-string-to-seconds x) (error nil))) .
+     "Convert an org timestamp string to number of seconds since the epoch (1970-01-01 01:00)")
+    ((dtime (x) (condition-case nil (org-time-string-to-absolute x) (error nil))) .
+     "Convert an org timestamp to number of days since 0000-12-30")
     ((year (x) (condition-case nil (string-to-number
                                     (format-time-string "%Y" (org-time-string-to-time x)))
                  (error nil))) . "The year of org timestamp arg (as a number)")
-    ((month (x) (condition-case nil (string-to-number (format-time-string "%m" (org-time-string-to-time x)))
+    ((month (x) (condition-case nil (string-to-number
+				     (format-time-string "%m" (org-time-string-to-time x)))
                   (error nil))) . "The month of org timestamp arg (as a number)")
-    ((yearday (x) (condition-case nil (string-to-number (format-time-string "%j" (org-time-string-to-time x)))
+    ((yearday (x) (condition-case nil (string-to-number
+				       (format-time-string "%j" (org-time-string-to-time x)))
                     (error nil))) . "The yearday of org timestamp arg (as a number)")
-    ((monthday (x) (condition-case nil (string-to-number (format-time-string "%d" (org-time-string-to-time x)))
+    ((monthday (x) (condition-case nil (string-to-number
+					(format-time-string "%d" (org-time-string-to-time x)))
                      (error nil))) . "The monthday of org timestamp arg (as a number)")
-    ((weekday (x) (condition-case nil (string-to-number (format-time-string "%w" (org-time-string-to-time x)))
+    ((weekday (x) (condition-case nil (string-to-number
+				       (format-time-string "%w" (org-time-string-to-time x)))
                     (error nil))) . "The weekday of org timestamp arg (as a number, Sunday is 0)")
-    ((hrs (x) (condition-case nil (string-to-number (format-time-string "%H" (org-time-string-to-time x)))
+    ((hrs (x) (condition-case nil (string-to-number
+				   (format-time-string "%H" (org-time-string-to-time x)))
                 (error nil))) . "The hour of org timestamp arg (as a number)")
-    ((mins (x) (condition-case nil (string-to-number (format-time-string "%M" (org-time-string-to-time x)))
+    ((mins (x) (condition-case nil (string-to-number
+				    (format-time-string "%M" (org-time-string-to-time x)))
                  (error nil))) . "The minute of org timestamp arg (as a number)")
-    ((secs (x) (condition-case nil (string-to-number (format-time-string "%S" (org-time-string-to-time x)))
+    ((secs (x) (condition-case nil (string-to-number
+				    (format-time-string "%S" (org-time-string-to-time x)))
                  (error nil))) . "The second of org timestamp arg (as a number)")
     ((gt (x y) (and x y (> x y))) . "Non-nil if x > y (and both x & y are non-nil)")
     ((lt (x y) (and x y (< x y))) . "Non-nil if x < y (and both x & y are non-nil)")
     ((gteq (x y) (and x y (>= x y))) . "Non-nil if x >= y (and both x & y are non-nil)")
     ((lteq (x y) (and x y (<= x y))) . "Non-nil if x <= y (and both x & y are non-nil)")
-    ((between (x y z &optional excly exclz) (org-table-between x y z excly exclz)) . "Non-nil if X is a value/date/string between Y & Z (see `org-table-between')")
-    ((rowmatch (regex) (some (lambda (x) (string-match regex x)) row)) . "Non-nil if REGEX matches any column in a row")
-    ((rowsum nil (-sum (mapcar 'string-to-number row))) . "Sum the numbers in all the columns of a row."))
-  "Function bindings for use by the filter function in dynamic blocks created by `org-dblock-write:tablefilter'.
-These bindings will be used in a `flet' form wrapped around the call to `org-table-filter-list',
-and so you should be careful not to shadow any existing functions used by `org-table-filter-list'.
-The bindings will be created after the default row and column variables in `org-table-filter-list' have been created,
- and so the functions may make use of those variables."
+    ((between (x y z &optional excly exclz) (org-table-between x y z excly exclz)) .
+     "Non-nil if X is a value/date/string between Y & Z (see `org-table-between')")
+    ((rowmatch (regex) (some (lambda (x) (string-match regex x)) row)) .
+     "Non-nil if REGEX matches any column in a row")
+    ((rowsum nil (-sum (mapcar 'string-to-number row))) .
+     "Sum the numbers in all the columns of a row.")
+    ((cell (&optional roffset coffset) (org-table-get-relative-field)) .
+     "Return contents of field in row (current row + ROFFSET) & column (current column + COFFSET).")
+    ((matchcell (regex &optional roffset coffset) (org-table-match-relative-field roffset coffset)) .
+     "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
+    ((hline-p (&optional roffset) (org-table-relative-hline-p roffset)) .
+     "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
+    ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d regexs)) .
+     "Count fields matching REGEXS sequentially in a given DIRECTION.")
+    ((checkcounts (counts bounds) (org-table-check-bounds counts bounds)) .
+     "Check BOUNDS of each number in COUNTS.")
+    ((sumcounts (d &rest regexs) (apply '+ (apply 'org-table-check-bounds d regexs))) .
+     "Count total No. of matches to REGEXS sequentially in a given DIRECTION."))
+  "Function bindings (with descriptions) used by `org-table-jump-condition' & `org-dblock-write:tablefilter'.
+These function bindings can be used in the cdr of `org-table-jump-condition', or the :filter parameter of
+a tablefilter dynamic block. For :filter parameters the functions are created after the default row & column
+variables have been created, and so can make use of those variables. However functions that use those variables
+are not usable in `org-table-jump-condition', and be careful not to shadow any existing functions used by
+ `org-table-filter-list'.
+These function will only work in a :filter parameter: rowmatch & rowsum
+and these will only work in `org-table-jump-condition': cell, matchcell, hline-p, countcells, checkcounts & sumcounts
+ (mostly wrapper functions, see the documentation of the functions they wrap for more info)."
   :group 'org-table
-  :type '(repeat (cons sexp string)))
+  :type '(repeat (cons (sexp :tag "Function") (string :tag "Description"))))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-timestamp-p (x)
@@ -1213,13 +1243,13 @@ The cell will swap places with the one in the direction chosen."
 
 ;; org-table-goto-field, org-table-get-field
 
-(defvar org-table-jump-condition (cons 'up nil)
+(defvar org-table-jump-condition (cons 'right t)
   "Cons cell used by `org-table-jump' to determine next cell to jump to.
 The car should be a symbol to specify the direction of traversal across the org-table:
  'up/'down specify moving up/down the current column & stopping at the top/bottom,
  'left/'right specify moving across previous/next cells and stopping at the first/last cell.
 The cdr should be an sexp that evaluates to true when the desired cell has been reached.
-It can make use of the following local function bindings:
+It can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
  (cell &optional ROFFSET COFFSET): 
                return the contents of the cell that is located in row (current row + ROFFSET)
@@ -1235,9 +1265,9 @@ It can make use of the following local function bindings:
                return non-nil if row (current row + ROFFSET) is a horizontal line. 
                Default value for ROFFSET is 0 so (hline) checks the current line.
                
- (countcells D &rest RXS):
+ (countcells D &rest REGEXS):
                match sequential cells in direction D ('up, 'down, 'left or 'right) against
-               the first regexp in RXS, then when a cell is reached that doesn't match, 
+               the first regexp in REGEXS, then when a cell is reached that doesn't match, 
                try matching it & subsequent ones against the next regexp, and when
                that regexp doesn't match move on to the next one, etc. 
                Continue this process until all the regexp's have been used up, or there
@@ -1245,12 +1275,9 @@ It can make use of the following local function bindings:
                Return a list of the counts of matching cells for each regexp.
                This can be used for finding cells based on the content of neighbouring cells.
 
- (sumcounts D &rest RXS):
+ (sumcounts D &rest REGEXS):
                This is similar to countcells, but instead of returning a list it returns the
-               sum of entries in the list, i.e. the total No. of cells that matched.
-
-In addition to the functions described above, the sexp may also make use of the functions defined
-in `org-table-filter-function-bindings'.")
+               sum of entries in the list, i.e. the total No. of cells that matched.")
 
 (defvar org-table-jump-condition-history nil)
 
@@ -1275,7 +1302,7 @@ in `org-table-filter-function-bindings'.")
 
 ;; simple-call-tree-info: CHECK  
 (defun org-table-match-relative-field (regex &optional roffset coffset)
-  "Perform `string-match' with REGEX on contents of a field/cell. 
+  "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one. 
 By default the field at point is used, but if ROFFSET & COFFSET are supplied then use the field
 in row (current row + ROFFSET) & column (current COLUMN + COFFSET)."
   (let ((str (org-table-get-relative-field roffset coffset)))
@@ -1293,7 +1320,7 @@ in row (current row + ROFFSET) & column (current COLUMN + COFFSET)."
 
 ;; simple-call-tree-info: CHECK  
 (defun org-table-count-matching-fields (direction &rest regexs)
-  "Match sequential fields in a given DIRECTION against REGEXS.
+  "Count fields matching REGEXS sequentially in a given DIRECTION.
 DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction
 of movement from the current field.
 Starting with the current field, fields are traversed sequentially in
@@ -1302,10 +1329,10 @@ mismatch occurs the next regexp is tried and used for matching subsequent
 fields until a mismatch, etc. until there is a mismatch with the last regexp.
 The return value is a list of counts of matches for each regexp.
 This can be used for finding cells based on the content of neighbouring cells."
-  (let ((counts (make-list (length rxs) 0))
+  (let ((counts (make-list (length regexs) 0))
 	(r 0) (c 0))
-    (dotimes (i (length rxs))
-      (while (org-table-match-relative-field (nth i rxs) r c)
+    (dotimes (i (length regexs))
+      (while (org-table-match-relative-field (nth i regexs) r c)
 	(incf (nth i counts))
 	(case d
 	  (up (decf r))
@@ -1336,18 +1363,7 @@ if ARG is negative."
   (when (equal current-prefix-arg '(4))
     (call-interactively 'org-table-set-jump-condition)
     (setq arg 1))
-  (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings)
-			     '((cell (&optional roffset coffset)
-				     (org-table-set-jump-condition))
-			       (matchcell (regex &optional roffset coffset)
-					  (org-table-match-relative-field roffset coffset))
-			       (hline-p (&optional roffset)
-					(org-table-relative-hline-p roffset))
-			       (countcells (d &rest rxs)
-					   (org-table-count-matching-fields d rxs))
-			       (checkcounts (counts bounds)
-					    (org-table-check-bounds counts bounds))
-			       (sumcounts (d &rest rxs) (apply '+ (apply 'countcells d rxs)))))
+  (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
 	   (org-table-analyze)
 	   (let* ((ndlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
 		  (ncols org-table-current-ncol)
