@@ -1234,6 +1234,7 @@ that rows in which c3 is empty dont cause an error):
 						   `(condition-case nil ,filter (error nil))
 						 filter)))))))
 
+;; simple-call-tree-info: DONE
 (defun org-table-move-cell nil
   "Prompt for a direction and move the current cell in that direction.
 The cell will swap places with the one in the direction chosen."
@@ -1241,8 +1242,7 @@ The cell will swap places with the one in the direction chosen."
   (org-table--move-cell (intern (completing-read "Direction: " '("up" "down" "left" "right"))))
   (org-table-align))
 
-;; org-table-goto-field, org-table-get-field
-
+;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition (cons 'right t)
   "Cons cell used by `org-table-jump' to determine next cell to jump to.
 The car should be a symbol to specify the direction of traversal across the org-table:
@@ -1257,6 +1257,7 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
  (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.")
 
+;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil)
 
 ;; simple-call-tree-info: TODO  select from preset conditions, or manually enter one
