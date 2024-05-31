@@ -1251,33 +1251,11 @@ The car should be a symbol to specify the direction of traversal across the org-
 The cdr should be an sexp that evaluates to true when the desired cell has been reached.
 It can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
- (cell &optional ROFFSET COFFSET): 
-               return the contents of the cell that is located in row (current row + ROFFSET)
-               and column (current column + COFFSET). Default values for ROFFSET & COFFSET are 0
-               so (cell) returns contents of current cell.
-
- (matchcell REGEX &optional ROFFSET COFFSET): 
-               return non-nil if cell located in row (current row + ROFFSET) and 
-               column (current column + COFFSET) matches regexp (return position of match).
-               Default values for ROFFSET & COFFSET are 0 so (matchcell REGEX) matches current cell.
-
- (hline-p &optional ROFFSET): 
-               return non-nil if row (current row + ROFFSET) is a horizontal line. 
-               Default value for ROFFSET is 0 so (hline) checks the current line.
-               
- (countcells D &rest REGEXS):
-               match sequential cells in direction D ('up, 'down, 'left or 'right) against
-               the first regexp in REGEXS, then when a cell is reached that doesn't match, 
-               try matching it & subsequent ones against the next regexp, and when
-               that regexp doesn't match move on to the next one, etc. 
-               Continue this process until all the regexp's have been used up, or there
-               are no more cells in direction D.
-               Return a list of the counts of matching cells for each regexp.
-               This can be used for finding cells based on the content of neighbouring cells.
-
- (sumcounts D &rest REGEXS):
-               This is similar to countcells, but instead of returning a list it returns the
-               sum of entries in the list, i.e. the total No. of cells that matched.")
+ (cell &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'
+ (matchcell REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
+ (hline-p &optional ROFFSET): a wrapper around `org-table-relative-hline-p'
+ (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
+ (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.")
 
 (defvar org-table-jump-condition-history nil)
 
