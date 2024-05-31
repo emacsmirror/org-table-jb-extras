@@ -1262,6 +1262,8 @@ It can also make use of the following variables:
 
  numdlines: the number of data lines in the table
  numcols: the number of columns
+ currentcol: the current column number
+ currentline: the current line number
  searchdir: the current direction of search ('up,'down,'left or 'right)
  fieldcount: the number of fields traversed since the last match
  startpos: the position of point before starting.")
@@ -1273,8 +1275,8 @@ It can also make use of the following variables:
 (defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 0))
 					      ("Has empty fields beneath" .
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
-					      ("First field" . (and (eq (org-table-current-column) 1)
-								    (eq (org-table-current-line) 1)))
+					      ("First field" . (and (eq currentcol 1)
+								    (eq currentline 1)))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
@@ -1395,14 +1397,19 @@ if ARG is negative."
 			    (t (error "Invalid `org-table-jump-condition'"))))
 		  (fieldcount 0)
 		  (matchcount 0)
-		  (startpos (point)))
+		  (startpos (point))
+		  currentcol currentline)
 	     (while (< matchcount (abs ,arg))
 	       (funcall movefn)
-	       (setq fieldcount 0)
+	       (setq fieldcount 1
+		     currentcol (org-table-current-column)
+		     currentline (org-table-current-line))
 	       (while (and (org-at-table-p)
 			   (not ,(cdr org-table-jump-condition)))
-		 (incf fieldcount)
-		 (funcall movefn))
+		 (funcall movefn)
+		 (setq fieldcount (1+ fieldcount)
+		       currentcol (org-table-current-column)
+		       currentline (org-table-current-line)))
 	       (incf matchcount))
 	     (if (not (org-at-table-p)) (goto-char startpos))))))
 
