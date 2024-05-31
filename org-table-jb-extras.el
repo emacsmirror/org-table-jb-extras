@@ -845,11 +845,11 @@ not used."
      "Non-nil if REGEX matches any column in a row")
     ((rowsum nil (-sum (mapcar 'string-to-number row))) .
      "Sum the numbers in all the columns of a row.")
-    ((cell (&optional roffset coffset) (org-table-get-relative-field)) .
+    ((cell (&optional roffset coffset) (org-table-get-relative-field roffset coffset currentcol currentline)) .
      "Return contents of field in row (current row + ROFFSET) & column (current column + COFFSET).")
-    ((matchcell (regex &optional roffset coffset) (org-table-match-relative-field roffset coffset)) .
+    ((matchcell (regex &optional roffset coffset) (org-table-match-relative-field roffset coffset currentcol currentline)) .
      "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
-    ((hline-p (&optional roffset) (org-table-relative-hline-p roffset)) .
+    ((hline-p (&optional roffset) (org-table-relative-hline-p roffset currentline)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d regexs)) .
      "Count fields matching REGEXS sequentially in a given DIRECTION.")
@@ -1272,7 +1272,7 @@ It can also make use of the following variables:
 (defvar org-table-jump-condition-history nil)
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 0))
+(defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 1))
 					      ("Has empty fields beneath" .
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
 					      ("First field" . (and (eq currentcol 1)
@@ -1298,8 +1298,9 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
   (setq org-table-jump-condition (cons direction condition)))
 
 ;; simple-call-tree-info: CHECK  
-(cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0))
-  "Return the contents of the field in row (current row + ROFFSET) & column (current column + COFFSET)."
+(cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0) line col)
+  "Return the contents of the field in row (LINE+ROFFSET) & column (COL+COFFSET).
+By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0."
   (save-excursion
     (let ((intable t) col)
       (when (/= roffset 0)
@@ -1313,23 +1314,23 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 	""))))
 
 ;; simple-call-tree-info: CHECK  
-(defun org-table-match-relative-field (regex &optional roffset coffset)
-  "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one. 
-By default the field at point is used, but if ROFFSET & COFFSET are supplied then use the field
-in row (current row + ROFFSET) & column (current COLUMN + COFFSET). 
-If ROFFSET & COFFSET refer to a non-existent field, REGEX will be matched against the empty string
+(defun org-table-match-relative-field (regex &optional roffset coffset line col)
+  "Perform `string-match' with REGEX on contents of field at line (LINE+ROFFSET) & column (COL+COFFSET). 
+By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0.
+If the indices refer to a non-existent field, REGEX will be matched against the empty string
 so make sure it doesn't match that."
-  (let ((str (org-table-get-relative-field roffset coffset)))
+  (let ((str (org-table-get-relative-field roffset coffset line col)))
     (when (> (length str) 0) ;if point is not in table return nil
       (string-match regex str))))
 
 ;; simple-call-tree-info: CHECK  
-(defun org-table-relative-hline-p (&optional roffset)
-  "Return non-nil if row at (current row + ROFFSET) is a horizontal line."
+(defun org-table-relative-hline-p (&optional roffset line)
+  "Return non-nil if row at (LINE + ROFFSET) is a horizontal line.
+LINE defaults to the current line, and ROFFSET defaults to 0."
   (save-excursion
     (when roffset
       (org-table-goto-line
-       (+ (org-table-current-line) roffset)))
+       (+ (or line (org-table-current-line)) roffset)))
     (org-at-table-hline-p)))
 
 ;; simple-call-tree-info: CHECK  
