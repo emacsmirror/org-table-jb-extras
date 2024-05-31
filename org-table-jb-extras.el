@@ -1311,7 +1311,9 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 (defun org-table-match-relative-field (regex &optional roffset coffset)
   "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one. 
 By default the field at point is used, but if ROFFSET & COFFSET are supplied then use the field
-in row (current row + ROFFSET) & column (current COLUMN + COFFSET)."
+in row (current row + ROFFSET) & column (current COLUMN + COFFSET). 
+If ROFFSET & COFFSET refer to a non-existent field, REGEX will be matched against the empty string
+so make sure it doesn't match that."
   (let ((str (org-table-get-relative-field roffset coffset)))
     (when (> (length str) 0) ;if point is not in table return nil
       (string-match regex str))))
