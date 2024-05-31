@@ -1270,8 +1270,8 @@ It can also make use of the following variables:
 (defvar org-table-jump-condition-history nil)
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("Every other cell" . (> fieldcount 0))
-					      ("Non-empty cells above empty ones" .
+(defcustom org-table-jump-condition-presets '(("Every other field" . (> fieldcount 0))
+					      ("Has empty fields beneath" .
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
