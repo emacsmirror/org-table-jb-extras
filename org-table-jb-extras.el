@@ -1290,7 +1290,13 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-condition (direction condition)
   "Prompt the user for a DIRECTION and CONDITION for `org-table-jump-condition'."
-  (interactive (list (intern (completing-read "Direction: " '(right down left up)))
+  (interactive (list (let ((key (read-key "Press key for search direction: ")))
+		       (case key 
+			 ((113 119 101 114 116 121 117 105 111 112) 'up)
+			 ((122 120 99 118 98 110 109) 'down)
+			 ((97 115 100 102 103) 'left)
+			 ((104 106 107 108 59 39) 'right)
+			 (t key)))
 		     (or (cdr (assoc (and org-table-jump-condition-presets
 					  (completing-read "Jump to field matching: "
 							   org-table-jump-condition-presets))
