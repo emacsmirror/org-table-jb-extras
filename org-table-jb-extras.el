@@ -1291,7 +1291,7 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 (defun org-table-set-jump-condition (direction condition)
   "Prompt the user for a DIRECTION and CONDITION for `org-table-jump-condition'."
   (interactive (list (let ((key (read-key "Press key for search direction: ")))
-		       (case key 
+		       (case key
 			 ((113 119 101 114 116 121 117 105 111 112) 'up)
 			 ((122 120 99 118 98 110 109) 'down)
 			 ((97 115 100 102 103) 'left)
@@ -1310,15 +1310,14 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
   "Return the contents of the field in row (LINE+ROFFSET) & column (COL+COFFSET).
 By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0."
   (save-excursion
-    (let ((intable t) col)
+    (let ((intable t)
+	  (col (or col (org-table-current-column))))
       (when (/= roffset 0)
-	(setq col (org-table-current-column))
-	(setq intable (org-table-goto-line (+ (org-table-current-line) roffset)))
+	(setq intable (org-table-goto-line
+		       (+ (or line (org-table-current-line)) roffset)))
 	(org-table-goto-column col))
       (if intable
-	  (org-table-get-field
-	   (when (/= coffset 0)
-	     (+ (or col (org-table-current-column)) coffset)))
+	  (org-table-get-field (when (/= coffset 0) (+ col coffset)))
 	""))))
 
 ;; simple-call-tree-info: CHECK  
@@ -1327,7 +1326,10 @@ By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0
 By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0.
 If the indices refer to a non-existent field, REGEX will be matched against the empty string
 so make sure it doesn't match that."
-  (let ((str (org-table-get-relative-field roffset coffset line col)))
+  (let ((str (org-table-get-relative-field
+	      roffset coffset
+	      (or line (org-table-current-line))
+	      (or col (org-table-current-column)))))
     (when (> (length str) 0) ;if point is not in table return nil
       (string-match regex str))))
 
