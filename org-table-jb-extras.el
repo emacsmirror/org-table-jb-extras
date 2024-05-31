@@ -1370,13 +1370,15 @@ if ARG is negative."
 			    (left (if (> ,arg 0) 'org-table-previous-field move-next-field))
 			    (right (if (> ,arg 0) move-next-field 'org-table-previous-field))
 			    (t (error "Invalid `org-table-jump-condition'"))))
-		  (count 0))
+		  (count 0)
+		  (pos (point)))
 	     (while (< count (abs ,arg))
 	       (funcall movefn)
 	       (while (and (org-at-table-p)
 			   (not ,(cdr org-table-jump-condition)))
 		 (funcall movefn))
-	       (incf count))))))
+	       (incf count))
+	     (if (not (org-at-table-p)) (goto-char pos))))))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-jump-prev (arg)
