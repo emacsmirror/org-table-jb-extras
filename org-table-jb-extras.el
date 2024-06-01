@@ -1421,6 +1421,7 @@ if b is a list check (and (>= c (first b)) (<= c (second b)))"
   "Jump to the STEPS next field in the org-table at point matching `org-table-jump-condition'.
 If STEPS is negative jump to the -STEPS previous field. 
 If STOPCOND &/or MOVEDIR are non-nil set `org-table-jump-condition' to these values.
+STOPCOND can be either an sexp or the name of a condition in `org-table-jump-condition-presets'.
 When called interactively STEPS will be set to the numeric value of prefix arg (1 by default).
 If a single C-u prefix is used, prompt for STOPCOND, and if more than one C-u prefix is used also 
 prompt for MOVEDIR. In both these cases STEPS is set to 1."
