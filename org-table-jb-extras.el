@@ -17,7 +17,7 @@
 ;;
 ;; Features that might be required by this library:
 ;;
-;; org cl-lib ido-choose-function ampl-mode 
+;; org cl-lib ido-choose-function ampl-mode dash s 
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -119,6 +119,7 @@
 (require 'cl-lib)
 (require 'ido-choose-function)
 (require 'dash)
+(require 'anaphora)
 (require 's)
 (require 'ampl-mode nil t) ;; my version which contains `run-ampl-async'
 ;;; Code:
@@ -1316,22 +1317,27 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 		:value-type (sexp :tag "Condition")))
 
 ;; simple-call-tree-info: CHECK
-(defun org-table-set-jump-condition (direction condition)
-  "Prompt the user for a DIRECTION and CONDITION for `org-table-jump-condition'."
+(defun org-table-set-jump-condition (condition)
+  "Prompt the user for a CONDITION for `org-table-jump-condition'."
+  (interactive (list (or (cdr (assoc (and org-table-jump-condition-presets
+					  (completing-read "Jump to field matching: "
+							   org-table-jump-condition-presets))
+				     org-table-jump-condition-presets))
+			 (read (read-string "Condition (sexp): "
+					    nil 'org-table-jump-condition-history)))))
+  (setcdr org-table-jump-condition condition))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-set-jump-direction (direction)
+  "Prompt the user for a DIRECTION for `org-table-jump-condition'."
   (interactive (list (let ((key (read-key "Press key for search direction: ")))
 		       (case key
 			 ((113 119 101 114 116 121 117 105 111 112) 'up)
 			 ((122 120 99 118 98 110 109) 'down)
 			 ((97 115 100 102 103) 'left)
 			 ((104 106 107 108 59 39) 'right)
-			 (t key)))
-		     (or (cdr (assoc (and org-table-jump-condition-presets
-					  (completing-read "Jump to field matching: "
-							   org-table-jump-condition-presets))
-				     org-table-jump-condition-presets))
-			 (read (read-string "Condition (sexp): "
-					    nil 'org-table-jump-condition-history)))))
-  (setq org-table-jump-condition (cons direction condition)))
+			 (t key)))))
+  (setcar org-table-jump-condition direction))
 
 ;; simple-call-tree-info: CHECK  
 (cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0) row col)
@@ -1407,16 +1413,27 @@ if b is a list check (and (>= c (first b)) (<= c (second b)))"
 			       counts bounds)))
 
 ;; simple-call-tree-info: DONE
-(defun org-table-jump-next (prefixarg)
-  "Jump to the next cell in the org-table at point matching `org-table-jump-condition'.
-When called interactively with a numeric PREFIXARG, jump to the PREFIXARG'th next cell or -PREFIXARG'th previous cell
-if PREFIXARG is negative."
+(defun org-table-jump-next (steps &optional stopcond movedir)
+  "Jump to the STEPS next field in the org-table at point matching `org-table-jump-condition'.
+If STEPS is negative jump to the -STEPS previous field. 
+If STOPCOND &/or MOVEDIR are non-nil set `org-table-jump-condition' to these values.
+When called interactively STEPS will be set to the numeric value of prefix arg (1 by default).
+If a single C-u prefix is used, prompt for STOPCOND, and if more than one C-u prefix is used also 
+prompt for MOVEDIR. In both these cases STEPS is set to 1."
   (interactive "p")
-  (when (equal current-prefix-arg '(4))
-    (call-interactively 'org-table-set-jump-condition)
-    (setq prefixarg 1))
-  (unless (org-at-table-p)
-    (error "Point is not in an org-table"))
+  (let ((doprompt (and (called-interactively-p 'any)
+		       (listp current-prefix-arg)
+		       (not (null current-prefix-arg)))))
+    (if stopcond
+	(org-table-set-jump-condition stopcond)
+      (if doprompt
+	  (call-interactively 'org-table-set-jump-condition)))
+    (if movedir
+	(org-table-set-jump-condition movedir)
+      (if (and doprompt (>= steps 16))
+	  (call-interactively 'org-table-set-jump-direction)))
+    (if doprompt (setq steps 1)))
+  (unless (org-at-table-p) (error "Point is not in an org-table"))
   (org-table-analyze)
   (let* ((numdlines (length (seq-filter 'numberp org-table-dlines)))
 	 (numhlines (length (seq-filter 'numberp org-table-hlines)))
@@ -1452,15 +1469,15 @@ if PREFIXARG is negative."
 					(org-table-goto-column
 					 (1+ (mod (- currentcol 2) numcols))))))
 	 (movefn (case movedir
-		   (up (if (> prefixarg 0) move-up-field move-down-field))
-		   (down (if (> prefixarg 0) move-down-field move-up-field))
-		   (left (if (> prefixarg 0) move-previous-field move-next-field))
-		   (right (if (> prefixarg 0) move-next-field move-previous-field))
+		   (up (if (> steps 0) move-up-field move-down-field))
+		   (down (if (> steps 0) move-down-field move-up-field))
+		   (left (if (> steps 0) move-previous-field move-next-field))
+		   (right (if (> steps 0) move-next-field move-previous-field))
 		   (t (error "Invalid `org-table-jump-condition'"))))
 	 (fieldcount 0)
 	 (matchcount 0)
 	 (startpos (point)))
-    (while (< matchcount (abs prefixarg))
+    (while (< matchcount (abs steps))
       (funcall movefn)
       (setq fieldcount 1
 	    currentcol (org-table-current-column)
