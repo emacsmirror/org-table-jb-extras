@@ -1292,20 +1292,21 @@ You can also make use of the following variables:
   "State variable (alist) for use by `org-table-jump-next'.")
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("First/last field" . ;; TODO: can we jump directly instead of searching all cells?
-					       (or (and (eq currentcol 1)
-							(eq currentdline 1)
-							(not (checkvar 'firstlast 'first))
-							(setvar 'firstlast 'first))
-						   (and (eq currentcol numcols)
-							(eq currentdline numdlines)
-							(checkvar 'firstlast 'first)
-							(setvar 'firstlast 'last))))
+(defcustom org-table-jump-condition-presets '(("First/last field" . 
+					       (or (and (not (checkvar 'firstlast 'first))
+							(setvar 'firstlast 'first)
+							(org-table-goto-line 1)
+							(not (org-table-goto-column 1)))
+						   (and (checkvar 'firstlast 'first)
+							(setvar 'firstlast 'last)
+							(org-table-goto-line numdlines)
+							(not (org-table-goto-column numcols)))))
 					      ("Under hline" . (hline-p -1))
 					      ("Above hline" . (hline-p 1))
 					      ("Every 2nd field" . (> fieldcount 1))
 					      ("Has empty fields beneath" .
-					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
+					       (and (not (hline-p 1))
+						    (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1))))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
