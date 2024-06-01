@@ -846,9 +846,9 @@ not used."
      "Non-nil if REGEX matches any column in a row")
     ((rowsum nil (-sum (mapcar 'string-to-number row))) .
      "Sum the numbers in all the columns of a row.")
-    ((cell (&optional roffset coffset) (org-table-get-relative-field roffset coffset currentcol currentline)) .
+    ((cell (&optional roffset coffset) (org-table-get-relative-field roffset coffset currentline currentcol)) .
      "Return contents of field in row (current row + ROFFSET) & column (current column + COFFSET).")
-    ((matchcell (regex &optional roffset coffset) (org-table-match-relative-field regex roffset coffset currentcol currentline)) .
+    ((matchcell (regex &optional roffset coffset) (org-table-match-relative-field regex roffset coffset currentline currentcol)) .
      "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
@@ -1278,7 +1278,7 @@ You can also make use of the following variables:
  currentcol: the current column number
  currentline: the current data line number (i.e. excluding horizontal lines)
  startcol: the column that point was in at the start
- startdline: the data line number that point was in at the start
+ startline: the data line number that point was in at the start
  movedir: the current direction of field traversal ('up,'down,'left or 'right)
  fieldcount: the number of fields traversed since the last match
  startpos: the position of point before starting
@@ -1293,7 +1293,7 @@ You can also make use of the following variables:
   "State variable (alist) for use by `org-table-jump-next'.")
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("First/last" . 
+(defcustom org-table-jump-condition-presets '(("First/last cell" . 
 					       (or (and (not (checkvar 'firstlast 'first))
 							(setvar 'firstlast 'first)
 							(org-table-goto-line 1)
@@ -1302,15 +1302,36 @@ You can also make use of the following variables:
 							(setvar 'firstlast 'last)
 							(org-table-goto-line numdlines)
 							(not (org-table-goto-column numcols)))))
+					      ("First/last row" .
+					       (or (and (not (checkvar 'firstlast 'first))
+							(setvar 'firstlast 'first)
+							(org-table-goto-line 1)
+							(not (org-table-goto-column startcol)))
+						   (and (checkvar 'firstlast 'first)
+							(setvar 'firstlast 'last)
+							(org-table-goto-line numdlines)
+							(not (org-table-goto-column startcol)))))
+					      ("First/last col" .
+					       (or (and (not (checkvar 'firstlast 'first))
+							(setvar 'firstlast 'first)
+							(org-table-goto-line startline)
+							(not (org-table-goto-column 1)))
+						   (and (checkvar 'firstlast 'first)
+							(setvar 'firstlast 'last)
+							(org-table-goto-line startline)
+							(not (org-table-goto-column numcols)))))
 					      ("Below hline" . (hline-p -1))
 					      ("Above hline" . (hline-p 1))
 					      ("Empty" . (matchcell "^\\s-+$"))
+					      ("Not empty" . (matchcell "\\S-"))
 					      ("Below empty" .
 					       (and (not (hline-p -1))
 						    (checkcounts (countcells 'up "\\S-" "^\\s-+$") '((1 1) 1))))
 					      ("Above empty" .
 					       (and (not (hline-p 1))
 						    (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1))))
+					      ("Right of empty cell" . (matchcell "^\\s-+$" 0 -1))
+					      ("Left of empty cell" . (matchcell "^\\s-+$" 0 1))
 					      ("Every other" . (> fieldcount 1))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
@@ -1461,8 +1482,8 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	 (numcols org-table-current-ncol)
 	 (startcol (org-table-current-column))
 	 (currentcol startcol)
-	 (startdline (org-table-current-line))
-	 (currentline startdline)
+	 (startline (org-table-current-line))
+	 (currentline startline)
 	 (movedir (car org-table-jump-condition))
 	 (move-next-field (lambda nil
 			    (if (or (/= currentcol numcols)
@@ -1504,7 +1525,7 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	    currentline (org-table-current-line))
       (while (and (org-at-table-p)
 		  (or (/= currentcol startcol)
-		      (/= currentline startdline))
+		      (/= currentline startline))
 		  (not (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
 				,(cdr org-table-jump-condition)))))
 	(funcall movefn)
