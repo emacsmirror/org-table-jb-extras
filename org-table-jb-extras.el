@@ -1500,10 +1500,11 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
     (if (not (org-at-table-p)) (goto-char startpos))))
 
 ;; simple-call-tree-info: DONE  
-(defun org-table-jump-prev (arg)
-  "Like `org-table-jump-next' but jump ARG steps in opposite direction."
+(defun org-table-jump-prev (steps &optional stopcond movedir)
+  "Like `org-table-jump-next' but jump STEPS in opposite direction.
+STOPCOND & MOVEDIR args are same as for `org-table-jump-next'."
   (interactive "p")
-  (org-table-jump-next (- arg)))
+  (org-table-jump-next (- steps) stopcond movedir))
 
 (provide 'org-table-jb-extras)
 
