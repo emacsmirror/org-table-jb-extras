@@ -1429,7 +1429,7 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
       (if doprompt
 	  (call-interactively 'org-table-set-jump-condition)))
     (if movedir
-	(org-table-set-jump-condition movedir)
+	(org-table-set-jump-direction movedir)
       (if (and doprompt (>= steps 16))
 	  (call-interactively 'org-table-set-jump-direction)))
     (if doprompt (setq steps 1)))
