@@ -1318,14 +1318,18 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-condition (condition)
-  "Prompt the user for a CONDITION for `org-table-jump-condition'."
+  "Set the CONDITION for `org-table-jump-condition'.
+If CONDITION is a string select the corresponding condition from `org-table-jump-condition-presets'.
+When called interactively prompt the user to select from `org-table-jump-condition-presets'"
   (interactive (list (or (cdr (assoc (and org-table-jump-condition-presets
 					  (completing-read "Jump to field matching: "
 							   org-table-jump-condition-presets))
 				     org-table-jump-condition-presets))
 			 (read (read-string "Condition (sexp): "
 					    nil 'org-table-jump-condition-history)))))
-  (setcdr org-table-jump-condition condition))
+  (setcdr org-table-jump-condition (if (stringp condition)
+				       (cdr (assoc condition org-table-jump-condition-presets))
+				     condition)))
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-direction (direction)
