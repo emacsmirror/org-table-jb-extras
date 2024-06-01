@@ -1317,6 +1317,13 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 		:value-type (sexp :tag "Condition")))
 
 ;; simple-call-tree-info: CHECK
+(defun org-table-describe-jump-condition (condition maxchars)
+  "Return a string containing a description of jump CONDITION of length at most MAXCHARS."
+  (let ((str (or (car (rassoc condition org-table-jump-condition-presets))
+		 (format "%s" condition))))
+    (substring str 0 (min maxchars (length str)))))
+
+;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-condition (condition)
   "Set the CONDITION for `org-table-jump-condition'.
 If CONDITION is a string select the corresponding condition from `org-table-jump-condition-presets'.
@@ -1333,7 +1340,8 @@ When called interactively prompt the user to select from `org-table-jump-conditi
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-direction (direction)
-  "Prompt the user for a DIRECTION for `org-table-jump-condition'."
+  "Set the DIRECTION for `org-table-jump-condition'; 'up, 'down, 'left or 'right.
+When called interactively prompt the user to press a key for the DIRECTION."
   (interactive (list (let ((key (read-key "Press key for search direction: ")))
 		       (case key
 			 ((113 119 101 114 116 121 117 105 111 112) 'up)
@@ -1437,7 +1445,10 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	(org-table-set-jump-direction movedir)
       (if (and doprompt (>= steps 16))
 	  (call-interactively 'org-table-set-jump-direction)))
-    (if doprompt (setq steps 1)))
+    (when doprompt (setq steps 1)
+	  (message "org-table-jump set to "
+		   (car org-table-jump-condition)
+		   (cdr org-table-jump-condition))))
   (unless (org-at-table-p) (error "Point is not in an org-table"))
   (org-table-analyze)
   (let* ((numdlines (length (seq-filter 'numberp org-table-dlines)))
