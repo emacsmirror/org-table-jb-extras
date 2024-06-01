@@ -849,7 +849,7 @@ not used."
      "Return contents of field in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((matchcell (regex &optional roffset coffset) (org-table-match-relative-field roffset coffset currentcol currentline)) .
      "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
-    ((hline-p (&optional roffset) (org-table-relative-hline-p roffset currentline)) .
+    ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d regexs)) .
      "Count fields matching REGEXS sequentially in a given DIRECTION.")
@@ -1259,7 +1259,7 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
 
  (cell &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'
  (matchcell REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
- (hline-p &optional ROFFSET): a wrapper around `org-table-relative-hline-p'
+ (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
  (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.
@@ -1271,10 +1271,14 @@ getvar, setvar & checkvar are used for communicating state across invocations of
 You can also make use of the following variables:
 
  numdlines: the number of data lines in the table
+ numhlines: the number of horizontal lines in the table
+ numlines: numdlines + numhlines
  numcols: the number of columns
  currentcol: the current column number
- currentline: the current line number
- searchdir: the current direction of search ('up,'down,'left or 'right)
+ currentdline: the current data line number (i.e. excluding horizontal lines)
+ startcol: the column that point was in at the start
+ startdline: the data line number that point was in at the start
+ movedir: the current direction of field traversal ('up,'down,'left or 'right)
  fieldcount: the number of fields traversed since the last match
  startpos: the position of point before starting
  prefixarg: the prefix arg converted to a number 
@@ -1288,14 +1292,17 @@ You can also make use of the following variables:
   "State variable (alist) for use by `org-table-jump-next'.")
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("First/last field" . (or (and (eq currentcol 1)
-									     (eq currentline 1)
-									     (not (checkvar 'firstlast 'first))
-									     (setvar 'firstlast 'first))
-									(and (eq currentcol numcols)
-									     (eq currentline numdlines)
-									     (checkvar 'firstlast 'first)
-									     (setvar 'firstlast 'last))))
+(defcustom org-table-jump-condition-presets '(("First/last field" . ;; TODO: can we jump directly instead of searching all cells?
+					       (or (and (eq currentcol 1)
+							(eq currentdline 1)
+							(not (checkvar 'firstlast 'first))
+							(setvar 'firstlast 'first))
+						   (and (eq currentcol numcols)
+							(eq currentdline numdlines)
+							(checkvar 'firstlast 'first)
+							(setvar 'firstlast 'last))))
+					      ("Under hline" . (hline-p -1))
+					      ("Above hline" . (hline-p 1))
 					      ("Every 2nd field" . (> fieldcount 1))
 					      ("Has empty fields beneath" .
 					       (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1)))
@@ -1326,41 +1333,38 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
   (setq org-table-jump-condition (cons direction condition)))
 
 ;; simple-call-tree-info: CHECK  
-(cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0) line col)
-  "Return the contents of the field in row (LINE+ROFFSET) & column (COL+COFFSET).
-By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0."
+(cl-defun org-table-get-relative-field (&optional (roffset 0) (coffset 0) row col)
+  "Return the contents of the field in row (ROW+ROFFSET) & column (COL+COFFSET).
+By default ROW & COL are the current data line & column, and ROFFSET & COFFSET are 0."
   (save-excursion
     (let ((intable t)
 	  (col (or col (org-table-current-column))))
       (when (/= roffset 0)
 	(setq intable (org-table-goto-line
-		       (+ (or line (org-table-current-line)) roffset)))
+		       (+ (or row (org-table-current-line)) roffset)))
 	(org-table-goto-column col))
       (if intable
 	  (org-table-get-field (when (/= coffset 0) (+ col coffset)))
 	""))))
 
 ;; simple-call-tree-info: CHECK  
-(defun org-table-match-relative-field (regex &optional roffset coffset line col)
-  "Perform `string-match' with REGEX on contents of field at line (LINE+ROFFSET) & column (COL+COFFSET). 
-By default LINE & COL are the current line & column, and ROFFSET & COFFSET are 0.
+(defun org-table-match-relative-field (regex &optional roffset coffset row col)
+  "Perform `string-match' with REGEX on contents of field at row (ROW+ROFFSET) & column (COL+COFFSET). 
+By default ROW & COL are the current data line & column, and ROFFSET & COFFSET are 0.
 If the indices refer to a non-existent field, REGEX will be matched against the empty string
 so make sure it doesn't match that."
   (let ((str (org-table-get-relative-field
 	      roffset coffset
-	      (or line (org-table-current-line))
+	      (or row (org-table-current-line))
 	      (or col (org-table-current-column)))))
     (when (> (length str) 0) ;if point is not in table return nil
       (string-match regex str))))
 
 ;; simple-call-tree-info: CHECK  
-(defun org-table-relative-hline-p (&optional roffset line)
-  "Return non-nil if row at (LINE + ROFFSET) is a horizontal line.
-LINE defaults to the current line, and ROFFSET defaults to 0."
+(defun org-table-relative-hline-p (roffset)
+  "Return non-nil if row at (Current data line + ROFFSET) is a horizontal line."
   (save-excursion
-    (when roffset
-      (org-table-goto-line
-       (+ (or line (org-table-current-line)) roffset)))
+    (forward-line roffset)
     (org-at-table-hline-p)))
 
 ;; simple-call-tree-info: CHECK  
@@ -1368,7 +1372,7 @@ LINE defaults to the current line, and ROFFSET defaults to 0."
   "Count fields matching REGEXS sequentially in a given DIRECTION.
 DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction
 of movement from the current field, or if used in `org-table-jump-condition'
-the variable `searchdir' can be used for the current direction of search.
+the variable `movedir' can be used for the current direction of movement.
 Starting with the current field, fields are traversed sequentially in
 the given DIRECTION and matched against the first regexp, when the first
 mismatch occurs the next regexp is tried and used for matching subsequent
@@ -1413,36 +1417,40 @@ if PREFIXARG is negative."
   (unless (org-at-table-p)
     (error "Point is not in an org-table"))
   (org-table-analyze)
-  (let* ((numdlines (1+ (seq-max (seq-filter 'numberp org-table-dlines))))
+  (let* ((numdlines (length (seq-filter 'numberp org-table-dlines)))
+	 (numhlines (length (seq-filter 'numberp org-table-hlines)))
+	 (numlines (+ numdlines numhlines))
 	 (numcols org-table-current-ncol)
-	 (currentcol (org-table-current-column))
-	 (currentline (org-table-current-line))
-	 (searchdir (car org-table-jump-condition))
+	 (startcol (org-table-current-column))
+	 (currentcol startcol)
+	 (startdline (org-table-current-line))
+	 (currentdline startdline)
+	 (movedir (car org-table-jump-condition))
 	 (move-next-field (lambda nil
 			    (if (or (/= currentcol numcols)
-				    (/= currentline numdlines))
+				    (/= currentdline numdlines))
 				(org-table-next-field)
 			      (org-table-goto-line 1)
 			      (org-table-goto-column 1))))
 	 (move-previous-field (lambda nil
 				(if (or (/= currentcol 1)
-					(/= currentline 1))
+					(/= currentdline 1))
 				    (org-table-previous-field)
-				  (org-table-goto-line numdlines)
+				  (org-table-goto-line numlines)
 				  (org-table-goto-column numcols))))
-	 (move-up-field (lambda nil (if (/= currentline 1)
-					(progn (forward-line -1)
+	 (move-up-field (lambda nil (if (/= currentdline 1)
+					(progn (org-table-goto-line (1- currentdline))
 					       (org-table-goto-column currentcol))
-				      (org-table-goto-line numdlines)
+				      (org-table-goto-line numlines)
 				      (org-table-goto-column
 				       (1+ (mod currentcol numcols))))))
-	 (move-down-field (lambda nil (if (/= currentline numdlines)
-					  (progn (forward-line 1)
+	 (move-down-field (lambda nil (if (/= currentdline numdlines)
+					  (progn (org-table-goto-line (1+ currentdline))
 						 (org-table-goto-column currentcol))
 					(org-table-goto-line 1)
 					(org-table-goto-column
 					 (1+ (mod (- currentcol 2) numcols))))))
-	 (movefn (case searchdir
+	 (movefn (case movedir
 		   (up (if (> prefixarg 0) move-up-field move-down-field))
 		   (down (if (> prefixarg 0) move-down-field move-up-field))
 		   (left (if (> prefixarg 0) move-previous-field move-next-field))
@@ -1455,14 +1463,16 @@ if PREFIXARG is negative."
       (funcall movefn)
       (setq fieldcount 1
 	    currentcol (org-table-current-column)
-	    currentline (org-table-current-line))
+	    currentdline (org-table-current-line))
       (while (and (org-at-table-p)
+		  (or (/= currentcol startcol)
+		      (/= currentdline startdline))
 		  (not (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
 				,(cdr org-table-jump-condition)))))
 	(funcall movefn)
 	(setq fieldcount (1+ fieldcount)
 	      currentcol (org-table-current-column)
-	      currentline (org-table-current-line)))
+	      currentdline (org-table-current-line)))
       (incf matchcount))
     (if (not (org-at-table-p)) (goto-char startpos))))
 
