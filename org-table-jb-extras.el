@@ -1332,8 +1332,10 @@ You can also make use of the following variables:
 					      ("Above empty" .
 					       (and (not (hline-p 1))
 						    (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1))))
-					      ("Right of empty cell" . (matchcell "^\\s-+$" 0 -1))
-					      ("Left of empty cell" . (matchcell "^\\s-+$" 0 1))
+					      ("Right of empty cell" . (and (matchcell "\\S-")
+									    (matchcell "^\\s-+$" 0 -1)))
+					      ("Left of empty cell" . (and (matchcell "\\S-")
+									   (matchcell "^\\s-+$" 0 1)))
 					      ("Every other" . (> fieldcount 1))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
@@ -1491,30 +1493,37 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	 (startline (org-table-current-line))
 	 (currentline startline)
 	 (movedir (car org-table-jump-condition))
-	 (move-next-field (lambda nil
-			    (if (or (/= currentcol numcols)
-				    (/= currentline numdlines))
-				(org-table-next-field)
-			      (org-table-goto-line 1)
-			      (org-table-goto-column 1))))
-	 (move-previous-field (lambda nil
-				(if (or (/= currentcol 1)
-					(/= currentline 1))
-				    (org-table-previous-field)
-				  (org-table-goto-line numlines)
-				  (org-table-goto-column numcols))))
-	 (move-up-field (lambda nil (if (/= currentline 1)
-					(progn (org-table-goto-line (1- currentline))
-					       (org-table-goto-column currentcol))
-				      (org-table-goto-line numlines)
-				      (org-table-goto-column
-				       (1+ (mod (- currentcol 2) numcols))))))
-	 (move-down-field (lambda nil (if (/= currentline numdlines)
-					  (progn (org-table-goto-line (1+ currentline))
-						 (org-table-goto-column currentcol))
+	 
+	 ;; (incrow (lambda (r) (1+ (mod r numdlines))))
+	 ;; (inccol (lambda (c) (1+ (mod r numcols))))
+	 ;; (decrow (lambda (r) (1+ (mod (- r 2) numdlines))))
+	 ;; (deccol (lambda (c) (1+ (mod (- c 2) numcols))))
+
+	 ;; Make these functions take 2 args; currentline & currentcol which they update and return without moving?
+	 (move-next-field (function (lambda nil
+				      (if (or (/= currentcol numcols)
+					      (/= currentline numdlines))
+					  (org-table-next-field)
 					(org-table-goto-line 1)
-					(org-table-goto-column
-					 (1+ (mod currentcol numcols))))))
+					(org-table-goto-column 1)))))
+	 (move-previous-field (function (lambda nil
+					  (if (or (/= currentcol 1)
+						  (/= currentline 1))
+					      (org-table-previous-field)
+					    (org-table-goto-line numlines)
+					    (org-table-goto-column numcols)))))
+	 (move-up-field (function (lambda nil (if (/= currentline 1)
+						  (progn (org-table-goto-line (1- currentline))
+							 (org-table-goto-column currentcol))
+						(org-table-goto-line numlines)
+						(org-table-goto-column
+						 (1+ (mod (- currentcol 2) numcols)))))))
+	 (move-down-field (function (lambda nil (if (/= currentline numdlines)
+						    (progn (org-table-goto-line (1+ currentline))
+							   (org-table-goto-column currentcol))
+						  (org-table-goto-line 1)
+						  (org-table-goto-column
+						   (1+ (mod currentcol numcols)))))))
 	 (movefn (case movedir
 		   (up (if (> steps 0) move-up-field move-down-field))
 		   (down (if (> steps 0) move-down-field move-up-field))
@@ -1524,6 +1533,8 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	 (fieldcount 0)
 	 (matchcount 0)
 	 (startpos (point)))
+    ;; TODO: refactor so we can use function instead of sexp for jump condition
+    ;; and pass row & col into function instead of moving there
     (while (< matchcount (abs steps))
       (funcall movefn)
       (setq fieldcount 1
