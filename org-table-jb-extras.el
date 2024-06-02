@@ -1295,7 +1295,7 @@ You can also make use of the following variables:
   "State variable (alist) for use by `org-table-jump-next'.")
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("First/last cell" . 
+(defcustom org-table-jump-condition-presets '(("1st<>last cell" . 
 					       (or (and (not (checkvar 'firstlast 'first))
 							(setvar 'firstlast 'first)
 							(org-table-goto-line 1)
@@ -1304,7 +1304,7 @@ You can also make use of the following variables:
 							(setvar 'firstlast 'last)
 							(org-table-goto-line numdlines)
 							(not (org-table-goto-column numcols)))))
-					      ("First/last row" .
+					      ("1st<>last row" .
 					       (or (and (not (checkvar 'firstlast 'first))
 							(setvar 'firstlast 'first)
 							(org-table-goto-line 1)
@@ -1313,7 +1313,7 @@ You can also make use of the following variables:
 							(setvar 'firstlast 'last)
 							(org-table-goto-line numdlines)
 							(not (org-table-goto-column startcol)))))
-					      ("First/last col" .
+					      ("1st<>last col" .
 					       (or (and (not (checkvar 'firstlast 'first))
 							(setvar 'firstlast 'first)
 							(org-table-goto-line startline)
@@ -1322,20 +1322,20 @@ You can also make use of the following variables:
 							(setvar 'firstlast 'last)
 							(org-table-goto-line startline)
 							(not (org-table-goto-column numcols)))))
-					      ("Below hline" . (hline-p -1))
-					      ("Above hline" . (hline-p 1))
-					      ("Empty" . (matchcell "^\\s-+$"))
-					      ("Not empty" . (matchcell "\\S-"))
-					      ("Below empty" .
+					      ("---/cell" . (hline-p -1))
+					      ("cell/---" . (hline-p 1))
+					      ("empty" . (matchcell "^\\s-+$"))
+					      ("non-empty" . (matchcell "\\S-"))
+					      ("empty/cell" .
 					       (and (not (hline-p -1))
 						    (checkcounts (countcells 'up "\\S-" "^\\s-+$") '((1 1) 1))))
-					      ("Above empty" .
+					      ("cell/empty" .
 					       (and (not (hline-p 1))
 						    (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1))))
-					      ("Right of empty cell" . (and (matchcell "\\S-")
-									    (matchcell "^\\s-+$" 0 -1)))
-					      ("Left of empty cell" . (and (matchcell "\\S-")
-									   (matchcell "^\\s-+$" 0 1)))
+					      ("empty|cell" . (and (matchcell "\\S-")
+								   (matchcell "^\\s-+$" 0 -1)))
+					      ("cell|empty" . (and (matchcell "\\S-")
+								   (matchcell "^\\s-+$" 0 1)))
 					      ("Every other" . (> fieldcount 1))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
@@ -1467,8 +1467,8 @@ If STEPS is negative jump to the -STEPS previous field.
 If STOPCOND &/or MOVEDIR are non-nil set `org-table-jump-condition' to these values.
 STOPCOND can be either an sexp or the name of a condition in `org-table-jump-condition-presets'.
 When called interactively STEPS will be set to the numeric value of prefix arg (1 by default).
-If a single C-u prefix is used, prompt for STOPCOND, and if more than one C-u prefix is used also 
-prompt for MOVEDIR. In both these cases STEPS is set to 1."
+If a single \\[universal-argument] prefix is used, prompt for STOPCOND, and if more than one \\[universal-argument] prefix 
+is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
   (interactive "p")
   (let ((doprompt (and (called-interactively-p 'any)
 		       (listp current-prefix-arg)
@@ -1532,9 +1532,11 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 		   (t (error "Invalid `org-table-jump-condition'"))))
 	 (fieldcount 0)
 	 (matchcount 0)
-	 (startpos (point)))
+	 (startpos (point))
+	 (startfield (org-table-get-field)))
     ;; TODO: refactor so we can use function instead of sexp for jump condition
     ;; and pass row & col into function instead of moving there
+    ;; Usel elp to profile this function.
     (while (< matchcount (abs steps))
       (funcall movefn)
       (setq fieldcount 1
@@ -1550,7 +1552,8 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	      currentcol (org-table-current-column)
 	      currentline (org-table-current-line)))
       (incf matchcount))
-    (if (not (org-at-table-p)) (goto-char startpos))))
+    (if (not (org-at-table-p)) (goto-char startpos))
+    (cons currentline currentcol)))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-jump-prev (steps &optional stopcond movedir)
