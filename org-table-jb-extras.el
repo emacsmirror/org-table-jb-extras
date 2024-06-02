@@ -1350,6 +1350,17 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 		 (format "%s" condition))))
     (substring str 0 (min maxchars (length str)))))
 
+(defun org-table-show-jump-condition nil
+  "Display a message in the minibuffer showing the current jump condition."
+  (interactive)
+  (let ((msg "org-table-jump set to direction = %s, condition = %s"))
+    (message msg
+	     (car org-table-jump-condition)
+	     (org-table-describe-jump-condition (cdr org-table-jump-condition)
+						(- (frame-text-cols)
+						   (length msg)
+						   10)))))
+
 ;; simple-call-tree-info: TODO make selection using one-key instead of completing-read
 (defun org-table-set-jump-condition (condition)
   "Set the CONDITION for `org-table-jump-condition'.
@@ -1468,10 +1479,7 @@ prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	(org-table-set-jump-direction movedir)
       (if (and doprompt (>= steps 16))
 	  (call-interactively 'org-table-set-jump-direction)))
-    (when doprompt (setq steps 1)
-	  (message "org-table-jump set to "
-		   (car org-table-jump-condition)
-		   (cdr org-table-jump-condition))))
+    (when doprompt (setq steps 1) (org-table-show-jump-condition)))
   (unless (org-at-table-p) (error "Point is not in an org-table"))
   (org-table-analyze)
   (let* ((numdlines (length (seq-filter 'numberp org-table-dlines)))
