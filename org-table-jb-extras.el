@@ -852,15 +852,22 @@ not used."
     ((matchfield (regex &optional roffset coffset)
 		 (org-table-match-relative-field regex (or roffset 0) (or coffset 0) currentline currentcol)) .
 		 "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
-    ((setfield (value &optional (roffset 0) (coffset 0) noprompt)
-	       (org-table-set-relative-field value noprompt roffset coffset currentline currentcol)
+    ((setfield (value &optional roffset coffset noprompt)
+	       (org-table-set-relative-field value noprompt (or roffset 0) (or coffset 0) currentline currentcol)
 	       t)
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
-    ((replace-in-field (regexp rep &optional (roffset 0) (coffset 0) noprompt)
+    ((replace-in-field (regexp rep &optional roffset coffset noprompt)
 		       (org-table-set-relative-field
 			(replace-regexp-in-string regexp rep (field roffset coffset))
-			noprompt roffset coffset currentline currentcol))
+			noprompt (or roffset 0) (or coffset 0) currentline currentcol))
      . "Replace matches to REGEXP with REP in field in row (current row + ROFFSET) & column (current column + COFFSET).")
+    ((field2num (&optional roffset coffset)
+		(string-to-number (field roffset coffset)))
+     . "Read field in row (current row + ROFFSET) & column (current column + COFFSET) as a number and return it.")
+    ((changenumber (func &optional roffset coffset noprompt)
+		   (setfield (number-to-string (funcall func (field2num roffset coffset)))
+			     roffset coffset noprompt))
+     . "Apply FUNC to number in field, and replace the field with the result.")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
@@ -1274,6 +1281,8 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (setfield VALUE &optional ROFFSET COFFSET NOPROMPT): a wrapper around `org-table-set-relative-field',
  (replace-in-field REGEXP REP &optional ROFFSET COFFSET): replace matches to REGEXP with REP in field 
     in row (current row + ROFFSET) & column (current column + COFFSET).
+ (field2num &optional ROFFSET COFFSET): read a field as a number and return it.
+ (changenumber FUNC &optional roffset coffset noprompt): apply FUNC to number in field and replace field with result.
  (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'.
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
@@ -1282,7 +1291,7 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
 
-Be careful with the setfield & replace-in-field functions, only use them if your other jump conditions are satisfied
+Be careful with the setfield, replace-in-field & changenum functions, only use them if your other jump conditions are satisfied
 otherwise you may end up changing more than you want.
 getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next'.
 You can also make use of the following variables:
