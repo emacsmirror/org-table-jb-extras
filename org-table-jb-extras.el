@@ -855,7 +855,12 @@ not used."
     ((setfield (value &optional (roffset 0) (coffset 0) noprompt)
 	       (org-table-set-relative-field value noprompt roffset coffset currentline currentcol)
 	       t)
-     . "Set contents of cell in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
+     . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
+    ((replace-in-field (regexp rep &optional (roffset 0) (coffset 0) noprompt)
+		       (org-table-set-relative-field
+			(replace-regexp-in-string regexp rep (field roffset coffset))
+			noprompt roffset coffset currentline currentcol))
+     . "Replace matches to REGEXP with REP in field in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
@@ -1267,7 +1272,8 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'.
  (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'.
  (setfield VALUE &optional ROFFSET COFFSET NOPROMPT): a wrapper around `org-table-set-relative-field',
-    Careful! only use setfield if your other jump conditions are satisfied.
+ (replace-in-field REGEXP REP &optional ROFFSET COFFSET): replace matches to REGEXP with REP in field 
+    in row (current row + ROFFSET) & column (current column + COFFSET).
  (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'.
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
@@ -1276,6 +1282,8 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
 
+Be careful with the setfield & replace-in-field functions, only use them if your other jump conditions are satisfied
+otherwise you may end up changing more than you want.
 getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next'.
 You can also make use of the following variables:
 
@@ -1435,15 +1443,17 @@ CROW & CCOL should ALWAYS be the current row & column so they don't have to be r
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
 CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
-  (let ((pos (point)))
+  (let ((pos (point))
+	field)
     (org-table-goto-line (+ roffset crow))
     (org-table-goto-column (+ coffset ccol))
+    (setq field (org-table-get-field))
     (when (or noprompt
-	      (y-or-n-p (format "Change value in cell %d %s, and %d %s from %s to %s"
+	      (y-or-n-p (format "Change value in cell %d %s, and %d %s from \"%s to \"%s"
 				(abs roffset) (if (> roffset 0) "below" "above")
 				(abs coffset) (if (> coffset 0) "right" "left")
-				(org-table-get-field)
-				value)))
+				(concat (substring field 0 (min 10 (length field))) "\"..")
+				(concat (substring value 0 (min 10 (length value))) "\".."))))
       (org-table-blank-field)
       (insert value))
     (goto-char pos)))
