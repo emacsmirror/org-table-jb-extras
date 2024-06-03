@@ -852,6 +852,10 @@ not used."
     ((matchfield (regex &optional roffset coffset)
 		 (org-table-match-relative-field regex (or roffset 0) (or coffset 0) currentline currentcol)) .
 		 "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
+    ((setfield (value &optional (roffset 0) (coffset 0) noprompt)
+	       (org-table-set-relative-field value noprompt roffset coffset currentline currentcol)
+	       t)
+     . "Set contents of cell in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
@@ -1260,10 +1264,12 @@ The car should be a symbol to specify the direction of traversal across the org-
 The cdr should be an sexp that evaluates to true when the desired cell has been reached.
 It can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
- (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'
- (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
- (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'
- (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
+ (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'.
+ (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'.
+ (setfield VALUE &optional ROFFSET COFFSET): a wrapper around `org-table-set-relative-field',
+    Careful! only use setfield if your other jump conditions are satisfied.
+ (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'.
+ (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
  (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.
  (getvar KEY): get the value associated with KEY in `org-table-jump-state'.
@@ -1404,6 +1410,24 @@ CROW & CCOL should ALWAYS be the current row & column so they don't have to be r
 	  (org-table-get-field (+ ccol coffset)))
       ;; dont specify column if we dont have to (faster)
       (org-table-get-field (if (/= coffset 0) (+ ccol coffset))))))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
+  "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
+CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated.
+Careful! only use after you've checked the cell satisfies your other jump conditions."
+  (let ((pos (point)))
+    (org-table-goto-line (+ roffset crow))
+    (org-table-goto-column (+ coffset ccol))
+    (when (or noprompt
+	      (y-or-n-p (format "Change value in cell %d %s, and %d %s from %s to %s"
+				(abs roffset) (if (> roffset 0) "below" "above")
+				(abs coffset) (if (> coffset 0) "right" "left")
+				(org-table-get-field)
+				value)))
+      (org-table-blank-field)
+      (insert value))
+    (goto-char pos)))
 
 ;; simple-call-tree-info: CHECK  
 (defun org-table-match-relative-field (regex roffset coffset crow ccol)
