@@ -862,7 +862,7 @@ not used."
      "Count total No. of matches to REGEXS sequentially in a given DIRECTION.")
     ((getvar (key) (cdr (assoc key org-table-jump-state))) .
      "Get the value associated with KEY in `org-table-jump-state'.")
-    ((setvar (key val) (setf (alist-get key org-table-jump-state) val)) .
+    ((setvar (key val) (setf (alist-get key org-table-jump-state) val) val) .
      "Set the value associated with KEY in `org-table-jump-state' to VAL.")
     ((checkvar (key &rest vals) (member (getvar key) vals)) .
      "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise."))
