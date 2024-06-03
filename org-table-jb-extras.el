@@ -1282,6 +1282,7 @@ You can also make use of the following variables:
  startcol: the column that point was in at the start
  startline: the data line number that point was in at the start
  movedir: the current direction of field traversal ('up,'down,'left or 'right)
+ numfields: the total number of fields in the table
  fieldcount: the number of fields traversed since the last match
  startpos: the position of point before starting
  prefixarg: the prefix arg converted to a number 
@@ -1488,6 +1489,7 @@ is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	 (numhlines (length (seq-filter 'numberp org-table-hlines)))
 	 (numlines (+ numdlines numhlines))
 	 (numcols org-table-current-ncol)
+	 (numfields (* numdlines numcols))
 	 (startcol (org-table-current-column))
 	 (currentcol startcol)
 	 (startline (org-table-current-line))
