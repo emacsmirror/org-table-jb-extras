@@ -846,16 +846,16 @@ not used."
      "Non-nil if REGEX matches any column in a row")
     ((rowsum nil (-sum (mapcar 'string-to-number row))) .
      "Sum the numbers in all the columns of a row.")
-    ((cell (&optional roffset coffset)
-	   (org-table-get-relative-field (or roffset 0) (or coffset 0) currentline currentcol)) .
-	   "Return contents of field in row (current row + ROFFSET) & column (current column + COFFSET).")
-    ((matchcell (regex &optional roffset coffset)
-		(org-table-match-relative-field regex (or roffset 0) (or coffset 0) currentline currentcol)) .
-		"Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
+    ((field (&optional roffset coffset)
+	    (org-table-get-relative-field (or roffset 0) (or coffset 0) currentline currentcol)) .
+	    "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
+    ((matchfield (regex &optional roffset coffset)
+		 (org-table-match-relative-field regex (or roffset 0) (or coffset 0) currentline currentcol)) .
+		 "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
-     "Count fields matching REGEXS sequentially in a given DIRECTION.")
+     "Count cells with fields matching REGEXS sequentially in a given DIRECTION.")
     ((checkcounts (counts bounds) (org-table-check-bounds counts bounds)) .
      "Check BOUNDS of each number in COUNTS.")
     ((sumcounts (d &rest regexs) (apply '+ (apply 'org-table-check-bounds d regexs))) .
@@ -873,7 +873,7 @@ variables have been created, and so can make use of those variables. However fun
 are not usable in `org-table-jump-condition', and be careful not to shadow any existing functions used by
  `org-table-filter-list'.
 These function will only work in a :filter parameter: rowmatch & rowsum
-and these will only work in `org-table-jump-condition': cell, matchcell, hline-p, countcells, checkcounts & sumcounts
+and these will only work in `org-table-jump-condition': field, matchfield, hline-p, countcells, checkcounts & sumcounts
  (mostly wrapper functions, see the documentation of the functions they wrap for more info)."
   :group 'org-table
   :type '(repeat (cons (sexp :tag "Function") (string :tag "Description"))))
@@ -1260,8 +1260,8 @@ The car should be a symbol to specify the direction of traversal across the org-
 The cdr should be an sexp that evaluates to true when the desired cell has been reached.
 It can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
- (cell &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'
- (matchcell REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
+ (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'
+ (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'
  (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
@@ -1282,8 +1282,8 @@ You can also make use of the following variables:
  startcol: the column that point was in at the start
  startline: the data line number that point was in at the start
  movedir: the current direction of field traversal ('up,'down,'left or 'right)
- numfields: the total number of fields in the table
- fieldcount: the number of fields traversed since the last match
+ numcells: the total number of cells in the table
+ cellcount: the number of fields traversed since the last match
  startpos: the position of point before starting
  prefixarg: the prefix arg converted to a number 
   (this could be useful for performing different jumps for different prefix args).")
@@ -1325,19 +1325,19 @@ You can also make use of the following variables:
 							(not (org-table-goto-column numcols)))))
 					      ("---/cell" . (hline-p -1))
 					      ("cell/---" . (hline-p 1))
-					      ("empty" . (matchcell "^\\s-+$"))
-					      ("non-empty" . (matchcell "\\S-"))
+					      ("empty" . (matchfield "^\\s-+$"))
+					      ("non-empty" . (matchfield "\\S-"))
 					      ("empty/cell" .
 					       (and (not (hline-p -1))
 						    (checkcounts (countcells 'up "\\S-" "^\\s-+$") '((1 1) 1))))
 					      ("cell/empty" .
 					       (and (not (hline-p 1))
 						    (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1))))
-					      ("empty|cell" . (and (matchcell "\\S-")
-								   (matchcell "^\\s-+$" 0 -1)))
-					      ("cell|empty" . (and (matchcell "\\S-")
-								   (matchcell "^\\s-+$" 0 1)))
-					      ("Every other" . (> fieldcount 1))
+					      ("empty|cell" . (and (matchfield "\\S-")
+								   (matchfield "^\\s-+$" 0 -1)))
+					      ("cell|empty" . (and (matchfield "\\S-")
+								   (matchfield "^\\s-+$" 0 1)))
+					      ("Every other" . (> cellcount 1))
 					      ("Enter manually" . nil))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
@@ -1489,7 +1489,7 @@ is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
 	 (numhlines (length (seq-filter 'numberp org-table-hlines)))
 	 (numlines (+ numdlines numhlines))
 	 (numcols org-table-current-ncol)
-	 (numfields (* numdlines numcols))
+	 (numcells (* numdlines numcols))
 	 (startcol (org-table-current-column))
 	 (currentcol startcol)
 	 (startline (org-table-current-line))
@@ -1532,7 +1532,7 @@ is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
 		   (left (if (> steps 0) move-previous-field move-next-field))
 		   (right (if (> steps 0) move-next-field move-previous-field))
 		   (t (error "Invalid `org-table-jump-condition'"))))
-	 (fieldcount 0)
+	 (cellcount 0)
 	 (matchcount 0)
 	 (startpos (point))
 	 (startfield (org-table-get-field)))
@@ -1541,7 +1541,7 @@ is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
     ;; Usel elp to profile this function.
     (while (< matchcount (abs steps))
       (funcall movefn)
-      (setq fieldcount 1
+      (setq cellcount 1
 	    currentcol (org-table-current-column)
 	    currentline (org-table-current-line))
       (while (and (org-at-table-p)
@@ -1550,7 +1550,7 @@ is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
 		  (not (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
 				,(cdr org-table-jump-condition)))))
 	(funcall movefn)
-	(setq fieldcount (1+ fieldcount)
+	(setq cellcount (1+ cellcount)
 	      currentcol (org-table-current-column)
 	      currentline (org-table-current-line)))
       (incf matchcount))
