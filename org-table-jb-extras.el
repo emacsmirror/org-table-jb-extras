@@ -1350,7 +1350,7 @@ You can also make use of the following variables:
 					       (and (matchfield "^\\s-+$")
 						    (setfield "-" 0 0 t)))
 					      ("enter manually" . enter)
-					      ("edit existing" . edit))
+					      ("edit preset" . edit))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
 evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
@@ -1380,7 +1380,10 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 (defun org-table-set-jump-condition (condition)
   "Set the CONDITION for `org-table-jump-condition'.
 If CONDITION is a string select the corresponding condition from `org-table-jump-condition-presets'.
-When called interactively prompt the user to select from `org-table-jump-condition-presets'"
+When called interactively prompt the user to select from `org-table-jump-condition-presets'.
+If the user chooses \"enter manually\" then they are prompted to enter an sexp, and if they
+choose \"edit preset\" then they are prompted to choose an existing condition and edit it
+in the minibuffer."
   (interactive (let ((condition (cdr (assoc (and org-table-jump-condition-presets
 						 (completing-read "Jump to field matching: "
 								  org-table-jump-condition-presets))
@@ -1508,8 +1511,10 @@ If STEPS is negative jump to the -STEPS previous field.
 If STOPCOND &/or MOVEDIR are non-nil set `org-table-jump-condition' to these values.
 STOPCOND can be either an sexp or the name of a condition in `org-table-jump-condition-presets'.
 When called interactively STEPS will be set to the numeric value of prefix arg (1 by default).
-If a single \\[universal-argument] prefix is used, prompt for STOPCOND, and if more than one \\[universal-argument] prefix 
-is used also prompt for MOVEDIR. In both these cases STEPS is set to 1."
+If a single \\[universal-argument] prefix is used, prompt for STOPCOND (which can be a preset one,
+or if \"enter manually\" or \"edit preset\" is chosen then a new one edited in the minibuffer), 
+and if more than one \\[universal-argument] prefix is used also prompt for MOVEDIR. 
+In both these cases STEPS is set to 1."
   (interactive "p")
   (let ((doprompt (and (called-interactively-p 'any)
 		       (listp current-prefix-arg)
