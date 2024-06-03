@@ -1266,7 +1266,7 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
 
  (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'.
  (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'.
- (setfield VALUE &optional ROFFSET COFFSET): a wrapper around `org-table-set-relative-field',
+ (setfield VALUE &optional ROFFSET COFFSET NOPROMPT): a wrapper around `org-table-set-relative-field',
     Careful! only use setfield if your other jump conditions are satisfied.
  (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'.
  (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
@@ -1343,9 +1343,14 @@ You can also make use of the following variables:
 								   (matchfield "^\\s-+$" 0 -1)))
 					      ("cell|empty" . (and (matchfield "\\S-")
 								   (matchfield "^\\s-+$" 0 1)))
-					      ("Every other" . (> cellcount 1))
-					      ("Enter manually" . enter)
-					      ("Edit existing" . edit))
+					      ("every other" . (> cellcount 1))
+					      ("replace empty" . (and (matchfield "^\\s-+$")
+								      (setfield "-")))
+					      ("replace empty (no prompt)" .
+					       (and (matchfield "^\\s-+$")
+						    (setfield "-" 0 0 t)))
+					      ("enter manually" . enter)
+					      ("edit existing" . edit))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
 evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
