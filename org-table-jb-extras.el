@@ -1344,7 +1344,8 @@ You can also make use of the following variables:
 					      ("cell|empty" . (and (matchfield "\\S-")
 								   (matchfield "^\\s-+$" 0 1)))
 					      ("Every other" . (> cellcount 1))
-					      ("Enter manually" . nil))
+					      ("Enter manually" . enter)
+					      ("Edit existing" . edit))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
 evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
@@ -1370,17 +1371,27 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 						   (length msg)
 						   10)))))
 
-;; simple-call-tree-info: TODO make selection using one-key instead of completing-read
+;; simple-call-tree-info: TODO make selection using one-key instead of completing-read?
 (defun org-table-set-jump-condition (condition)
   "Set the CONDITION for `org-table-jump-condition'.
 If CONDITION is a string select the corresponding condition from `org-table-jump-condition-presets'.
 When called interactively prompt the user to select from `org-table-jump-condition-presets'"
-  (interactive (list (or (cdr (assoc (and org-table-jump-condition-presets
-					  (completing-read "Jump to field matching: "
-							   org-table-jump-condition-presets))
-				     org-table-jump-condition-presets))
-			 (read (read-string "Condition (sexp): "
-					    nil 'org-table-jump-condition-history)))))
+  (interactive (let ((condition (cdr (assoc (and org-table-jump-condition-presets
+						 (completing-read "Jump to field matching: "
+								  org-table-jump-condition-presets))
+					    org-table-jump-condition-presets))))
+		 (list (if (memq condition '(enter edit))
+			   (read (read-string
+				  "Condition (sexp): "
+				  (when (eq condition 'edit)
+				    (prin1-to-string
+				     (cdr (assoc (completing-read
+						  "Preset: "
+						  (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
+							     org-table-jump-condition-presets))
+						 org-table-jump-condition-presets))))
+				  'org-table-jump-condition-history))
+			 condition))))
   (setcdr org-table-jump-condition (if (stringp condition)
 				       (cdr (assoc condition org-table-jump-condition-presets))
 				     condition)))
