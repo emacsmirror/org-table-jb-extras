@@ -1,6 +1,5 @@
 # AMPL program for finding the column widths required to fit a table of text into a given width.
 
-#if ($AMPL_SOLVER) = "" then { option solver bonmin } else {option solver ($AMPL_SOLVER)};
 option solver gurobi; # gurobi is fastest for this problem
 
 param ncols;  # Number of columns
@@ -23,21 +22,18 @@ subject to total_width:
 subject to fit_cells {i in 1..nrows, j in 1..ncols}:
 	cell_lengths[i, j] <= widths[j]*rows[i];
 
-#data table_data.dat;
-#data /tmp/orgtbl.dat;
+# Read data from STDIN
 read nrows, ncols, maxwidth < -;
 read {i in 1..nrows, j in 1..ncols} cell_lengths[i,j] < -;
 
 solve >/dev/null;
 
 # Display the results
-#printf "Rows| Col widths:   "; print {j in 1..ncols} widths[j]; printf {i in 1..nrows} "%d   |\n", rows[i];
 printf "Widths:";
 printf {i in 1..ncols} " %d", widths[i];
 printf "\n";
 printf "Rows:";
 printf {j in 1..nrows} " %d", rows[j];
 printf "\n";
-#display widths, rows, total_rows;
-#display total_rows;
+
 end;
