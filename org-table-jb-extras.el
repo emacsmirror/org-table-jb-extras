@@ -525,7 +525,8 @@ If REPEAT is supplied then repeat this process REPEAT times."
 					("Narrow table" . org-table-narrow)
 					("Fill empty cells" . org-table-fill-empty-cells)
 					("Move current cell" . org-table-move-cell)
-					("Set jump condition" . org-table-set-jump-condition))
+					("Set jump condition" . org-table-set-jump-condition)
+					("Show table dimensions" . org-table-query-dimension))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -649,7 +650,7 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 
 ;;;###autoload
 (when (fboundp 'run-ampl-async)
-  ;; simple-call-tree-info: DONE  
+  ;; simple-call-tree-info: TODO what about converse; i.e. reduce height of table by combining rows?
   (defun org-table-narrow (width &optional arg fixedcols)
     "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 FIXEDCOLS should be a list of indices of the columns that shouldn't be narrowed (starting at 0).
@@ -802,7 +803,7 @@ not used."
 ;; and the width of the table, etc.
 
 ;;;###autoload
-;; simple-call-tree-info: DONE  
+;; simple-call-tree-info: TODO
 (defcustom org-table-filter-function-bindings
   '(((num (x) (string-to-number x)) . "Convert a string to a number.")
     ((days-to-now (x) (condition-case nil (org-time-stamp-to-now x) (error nil))) .
@@ -870,6 +871,12 @@ not used."
 		   (setfield (number-to-string (funcall func (field2num roffset coffset)))
 			     roffset coffset noprompt))
      . "Apply FUNC to number in field, and replace the field with the result.")
+    ;; TODO: function to convert between org-timestamps and other date formats
+    ((convertdate (fmtstr &optional roffset coffset)
+		  (let ((field (field roffset coffset)))
+		    t
+		    )
+		  ))
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
@@ -988,6 +995,28 @@ The name of a table is determined by a #+NAME or #+TBLNAME line before the table
   "Returns the number of rows in an org table (in list form) not counting hlines.
 To count the number of rows including hlines use `length'."
   (length (remove 'hline tbl)))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-query-dimension (&optional where)
+  "Print and return the number of columns, data lines, cells, hlines, height & width (in chars) of org-table at point.
+If WHERE arg is supplied report values for table at that position in the buffer."
+  (interactive)
+  (save-excursion
+    (if where (goto-char where))
+    (if (not (org-at-table-p)) (error "No org-table here"))
+    (org-table-analyze)
+    (let ((ndlines (length (seq-filter 'numberp org-table-dlines)))
+	  (nhlines (length (seq-filter 'numberp org-table-hlines)))
+	  (ncols org-table-current-ncol)
+	  begin end)
+      (goto-char (line-beginning-position))
+      (search-forward "|")
+      (setq begin (point))
+      (goto-char (line-end-position))
+      (setq end (point))
+      (message "Num cols: %d, Num data lines: %d, Num cells: %d, Num hlines: %d, Height: %d, Width: %d"
+	       ncols ndlines (* ndlines ncols) nhlines (+ ndlines nhlines) (1+ (- end begin)))
+      (list ncols ndlines (* ndlines ncols) nhlines (+ ndlines nhlines) (1+ (- end begin))))))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-lisp-to-string (lst &optional insert)
