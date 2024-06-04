@@ -524,7 +524,8 @@ If REPEAT is supplied then repeat this process REPEAT times."
 					("Narrow column" . org-table-narrow-column)
 					("Narrow table" . org-table-narrow)
 					("Fill empty cells" . org-table-fill-empty-cells)
-					("Move current cell" . org-table-move-cell))
+					("Move current cell" . org-table-move-cell)
+					("Set jump condition" . org-table-set-jump-condition))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -859,7 +860,8 @@ not used."
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
 		       (org-table-set-relative-field
 			(replace-regexp-in-string regexp rep (field roffset coffset))
-			noprompt (or roffset 0) (or coffset 0) currentline currentcol))
+			noprompt (or roffset 0) (or coffset 0) currentline currentcol)
+		       t)
      . "Replace matches to REGEXP with REP in field in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((field2num (&optional roffset coffset)
 		(string-to-number (field roffset coffset)))
@@ -1402,8 +1404,9 @@ If the user chooses \"enter manually\" then they are prompted to enter an sexp, 
 choose \"edit preset\" then they are prompted to choose an existing condition and edit it
 in the minibuffer."
   (interactive (let ((condition (cdr (assoc (and org-table-jump-condition-presets
-						 (completing-read "Jump to field matching: "
-								  org-table-jump-condition-presets))
+						 (completing-read
+						  (substitute-command-keys "Set jump condition for \\[org-table-jump-next]: ")
+						  org-table-jump-condition-presets))
 					    org-table-jump-condition-presets))))
 		 (list (if (memq condition '(enter edit))
 			   (read (read-string
@@ -1452,8 +1455,7 @@ CROW & CCOL should ALWAYS be the current row & column so they don't have to be r
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
 CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
-  (let ((pos (point))
-	field)
+  (let (field)
     (org-table-goto-line (+ roffset crow))
     (org-table-goto-column (+ coffset ccol))
     (setq field (org-table-get-field))
@@ -1465,7 +1467,7 @@ Careful! only use after you've checked the cell satisfies your other jump condit
 				(concat (substring value 0 (min 10 (length value))) "\".."))))
       (org-table-blank-field)
       (insert value))
-    (goto-char pos)))
+    (org-table-goto-column ccol)))
 
 ;; simple-call-tree-info: CHECK  
 (defun org-table-match-relative-field (regex roffset coffset crow ccol)
