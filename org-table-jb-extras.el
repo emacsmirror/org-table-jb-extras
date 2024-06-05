@@ -849,7 +849,7 @@ not used."
     ((rowsum nil (-sum (mapcar 'string-to-number row))) .
      "Sum the numbers in all the columns of a row.")
     ((field (&optional roffset coffset)
-	    (org-table-get-relative-field (or roffset 0) (or coffset 0) currentline currentcol)) .
+	    (s-trim (org-table-get-relative-field (or roffset 0) (or coffset 0) currentline currentcol))) .
 	    "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((matchfield (regex &optional roffset coffset)
 		 (org-table-match-relative-field regex (or roffset 0) (or coffset 0) currentline currentcol)) .
@@ -871,12 +871,13 @@ not used."
 		   (setfield (number-to-string (funcall func (field2num roffset coffset)))
 			     roffset coffset noprompt))
      . "Apply FUNC to number in field, and replace the field with the result.")
-    ;; TODO: function to convert between org-timestamps and other date formats
-    ((convertdate (fmtstr &optional roffset coffset)
-		  (let ((field (field roffset coffset)))
-		    t
-		    )
-		  ))
+    ((convertdate (&optional roffset coffset noprompt outfmt &rest patterns)
+		  (let ((newfield (org-table-convert-timestamp
+				   (field roffset coffset) outfmt patterns)))
+		    (if (not newfield) t
+		      (setfield newfield roffset coffset noprompt)
+		      (org-table-align))))
+     . "Convert date in relative field to different format")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
@@ -1489,11 +1490,9 @@ Careful! only use after you've checked the cell satisfies your other jump condit
     (org-table-goto-column (+ coffset ccol))
     (setq field (org-table-get-field))
     (when (or noprompt
-	      (y-or-n-p (format "Change value in cell %d %s, and %d %s from \"%s to \"%s"
+	      (y-or-n-p (format "Change value in cell %d %s, and %d %s"
 				(abs roffset) (if (> roffset 0) "below" "above")
-				(abs coffset) (if (> coffset 0) "right" "left")
-				(concat (substring field 0 (min 10 (length field))) "\"..")
-				(concat (substring value 0 (min 10 (length value))) "\".."))))
+				(abs coffset) (if (> coffset 0) "right" "left"))))
       (org-table-blank-field)
       (insert value))
     (org-table-goto-column ccol)))
@@ -1553,6 +1552,88 @@ if b is a list check (and (>= c (first b)) (<= c (second b)))"
 				     (>= c b)
 				   (and (>= c (first b)) (<= c (second b)))))
 			       counts bounds)))
+
+(defcustom org-table-timestamp-patterns
+  '("yyyy/MM/dd HH:mm:ss" "yyyy/MM/dd HH:mm" "yyyy/MM/dd" 
+    "yyyy-MM-dd HH:mm:ss" "yyyy-MM-dd HH:mm" "yyyy-MM-dd" 
+    "yyyy:MM:dd HH:mm:ss" "yyyy:MM:dd HH:mm" "yyyy:MM:dd" 
+    "dd/MM/yyyy HH:mm:ss" "dd/MM/yyyy HH:mm" "dd/MM/yyyy" 
+    "dd-MM-yyyy HH:mm:ss" "dd-MM-yyyy HH:mm" "dd-MM-yyyy" 
+    "dd:MM:yyyy HH:mm:ss" "dd:MM:yyyy HH:mm" "dd:MM:yyyy")
+  "List of java style date-time matching patterns as accepted by `datetime-matching-regexp' and related functions.
+If you set this outside the customization framework you should make sure to also update `org-table-timestamp-regexp',
+and `org-table-timestamp-parsers',
+e.g: (setq 'org-table-timestamp-patterns '(\"yy/MM/dd\")
+	   'org-table-timestamp-regexp 
+	   (substring
+	    (cl-loop for pattern in patterns
+		     concat (concat \"\\(?:\" (datetime-matching-regexp 'java pattern) \"\\)\\|\"))
+	    0 -2)
+	   'org-table-timestamp-parsers
+	   (cl-loop for pattern in patterns
+		    collect (datetime-parser-to-float 'java pattern :timezone 'system)))"
+  :group 'org-table
+  :type '(repeat (string :tag "Pattern" :help-echo "A java-style date-time pattern"))
+  :require 'datetime
+  :set (lambda (sym patterns)
+	 (setq sym patterns)
+	 (setq org-table-timestamp-regexp
+	       (concat "\\(?:" (substring
+				(cl-loop for pattern in patterns
+					 concat (concat "\\(" (datetime-matching-regexp 'java pattern) "\\)\\|"))
+				0 -2) "\\)")
+	       org-table-timestamp-parsers
+	       (cl-loop for pattern in patterns
+			collect (datetime-parser-to-float 'java pattern :timezone 'system)))))
+
+(defvar org-table-timestamp-regexp
+  (concat "\\(?:"
+	  (substring
+	   (cl-loop for pattern in org-table-timestamp-patterns
+		    concat (concat "\\(" (datetime-matching-regexp 'java pattern) "\\)\\|"))
+	   0 -2) "\\)")
+  "A regular expression for matching any of the patterns in `org-table-timestamp-patterns'.
+This will be automatically update when `org-table-timestamp-patterns' is updated.
+Each pattern will be enclosed in parentheses and separated by \\| so you can obtain the required 
+substring match using `match-string'.")
+
+(defvar org-table-timestamp-parsers
+  (cl-loop for pattern in org-table-timestamp-patterns
+	   collect (datetime-parser-to-float 'java pattern :timezone 'system))
+  "A list of timestamp parsers corresponding to patterns in `org-table-timestamp-patterns'.
+This will be automatically updated when `org-table-timestamp-patterns' is updated.")
+
+(defcustom org-table-timestamp-format (car org-time-stamp-formats)
+  "Default format for timestamps output by `org-table-convert-timestamp'."
+  :group 'org-table
+  :type 'string)
+
+(defun org-table-convert-timestamp (field &optional outfmt patterns)
+  "Replace timestamp in FIELD with datetime in format specified by OUTFMT, and return a new string.
+Optional arg PATTERNS is a list of java style date-time matching patterns. 
+By default `org-table-timestamp-patterns' is used. 
+OUTFMT is a POSIX format string as used by `format-time-string' for the replacement timestamp which
+by default is `org-table-timestamp-format'."
+  (let* ((regex (if patterns
+		    (concat "\\(?:" (substring
+				     (cl-loop for pattern in patterns
+					      concat (concat "\\(" (datetime-matching-regexp 'java pattern) "\\)\\|"))
+				     0 -2) "\\)")
+		  org-table-timestamp-regexp))
+	 (parsers (if patterns
+		      (cl-loop for pattern in patterns
+			       collect (datetime-parser-to-float
+					'java pattern :timezone 'system))
+		    org-table-timestamp-parsers)))
+    (when (string-match regex field)
+      (let* ((pos (cl-position-if-not
+		   'null (mapcar (lambda (i) (match-string i field))
+				 (number-sequence 1 (length parsers)))))
+	     (substr (match-string (1+ pos) field))
+	     (unixts (funcall (nth pos parsers) substr)))
+	(string-replace substr
+			(format-time-string (or outfmt org-table-timestamp-format) unixts)
+			field)))))
 
 ;; simple-call-tree-info: DONE
 (defun org-table-jump-next (steps &optional stopcond movedir)
