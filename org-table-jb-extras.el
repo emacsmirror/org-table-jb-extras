@@ -871,7 +871,7 @@ not used."
 		   (setfield (number-to-string (funcall func (field2num roffset coffset)))
 			     roffset coffset noprompt))
      . "Apply FUNC to number in field, and replace the field with the result.")
-    ((convertdate (&optional roffset coffset noprompt outfmt &rest patterns)
+    ((convertdate (&optional noprompt outfmt roffset coffset &rest patterns)
 		  (let ((newfield (org-table-convert-timestamp
 				   (field roffset coffset) outfmt patterns)))
 		    (if (not newfield) t
