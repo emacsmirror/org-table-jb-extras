@@ -38,10 +38,10 @@ If you want more fine-grained control you can use *org-table-flatten-columns* to
 The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is invoked repeatedly.
 There are many predefined jump conditions in *org-table-jump-condition-presets* such as "empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
 
-These presets can be selected, altered, or you can define you own using an arbitrary lisp expression, by either using a C-u prefix arg with *org-table-jump-next/org-table-jump-prev* or calling *org-table-set-jump-condition*.
-You can also select the order in which cells are checked by using a double C-u prefix when calling *org-table-jump-next/org-table-jump-prev*, or by calling *org-table-set-jump-direction*.
+These presets can be selected, altered, or you can define you own using an arbitrary lisp expression, by either using a *C-u* prefix arg with *org-table-jump-next/org-table-jump-prev* or calling *org-table-set-jump-condition*.
+You can also select the order in which cells are checked by using a double *C-u* prefix when calling *org-table-jump-next/org-table-jump-prev*, or by calling *org-table-set-jump-direction*.
 
-When defining your own jump condition you can make use of functions defined in *org-table-filter-function-bindings* to help define the condition, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also function to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
+When defining your own jump condition you can make use of functions defined in *org-table-filter-function-bindings* to help define the condition, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
 Many of these functions can be applied either to the cell currently being checked, or its neighbouring cells.
 
@@ -57,7 +57,7 @@ To use it, put point in an org-table, do *C-u M-x org-table-jump-next*, choose "
 into this one:
 | foo | bar choo zoo |
 | aaa | bbb          |
-After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as inserting horizontal lines.
+After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as inserting horizontal lines, or marking altered cells.
 
 Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks. The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of this.
 ** Filtering org-tables
