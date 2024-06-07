@@ -45,29 +45,7 @@
 ;; Bitcoin donations gratefully accepted: 16xSxS5v7rpknr4WL8unwCRab5nZEfc7eK
 ;;
 ;; This library contains many extra functions & commands for dealing with org-tables which are documented below.
-;; Most of the functions useful to users can be accessed through a single command: `org-table-dispatch'.
-;; When `org-table-dispatch' is called while point is in an org-table an ido menu of possible
-;; actions from `org-table-dispatch-actions' is offered to the user. These actions include:
-;; "copy table", "copy rectangle", "kill/clear cells", "export to file", "copy cols to calc",
-;; "plot graph", "fit curve to cols", "transpose table", "split/join columns", "join rows/flatten columns",
-;; "toggle display of row/column refs", "Hide/show column", "Narrow column", "Narrow table", "Fill empty cells",
-;; "Insert vertical line", etc.
-;; `org-dblock-write:tablefilter', a dynamic block function which can be used for filtering the rows of a table
-;; into another one. For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html
-;; 
-;; The `org-table-jump-next' & `org-table-jump-prev' commands provide a method for quickly & easily navigating
-;; and altering tables. You can define arbitrary jump conditions which determine the sequence of cells visited
-;; when `org-table-jump-next' is pressed repeatedly. There are many predefined ones in `org-table-jump-condition-presets'
-;; which can be selected or altered ("edit preset"), or you can enter one manually ("enter manually").
-;; These jump conditions are arbitrary lisp expressions that are evaluated at each cell to determine whether to move
-;; there or not. The jump condition sexps can make use of locally defined functions in `org-table-filter-function-bindings'
-;; which are also described in the docstring for `org-table-jump-condition'.
-;; To change the jump condition, either use a C-u prefix arg with `org-table-jump-next'/`org-table-jump-prev' or 
-;; call `org-table-set-jump-condition'. You can also select the order in which cells are checked by using a double C-u
-;; prefix when calling `org-table-jump-next'/`org-table-jump-prev', or by calling `org-table-set-jump-direction'.
-;; 
-;; The file `org-table-solve-mazelog.org' contains examples of how `org-table-jump' can be used to perform complex
-;; tasks such as solving maze puzzles.
+;; For more information see the Readme.org file: https://github.com/vapniks/org-table-jb-extras/tree/main
 ;; 
 ;;;;;;;;
 
