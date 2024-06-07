@@ -46,7 +46,7 @@ To change the jump condition, either use a C-u prefix arg with *org-table-jump-n
 call *org-table-set-jump-condition*. You can also select the order in which cells are checked by using a double C-u
 prefix when calling *org-table-jump-next*/*org-table-jump-prev*, or by calling *org-table-set-jump-direction*.
 
-The file *org-table-solve-mazelog.org* contains examples of how *org-table-jump* can be used to perform complex
+The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of how *org-table-jump* can be used to perform complex
 tasks such as solving maze puzzles.
 
 * Commands & keybindings
