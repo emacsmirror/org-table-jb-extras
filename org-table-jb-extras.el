@@ -1497,7 +1497,7 @@ When called interactively prompt the user to press a key for the DIRECTION."
 ;; simple-call-tree-info: CHECK  
 (defun org-table-get-relative-field (roffset coffset crow ccol)
   "Return the contents of the field in row (CROW+ROFFSET) & column (CCOL+COFFSET).
-CROW & CCOL should be the current row & column so they don't have to be recalculated."
+CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0."
   (save-excursion
     (if (/= roffset 0)
 	(if (not (org-table-goto-line (+ crow roffset)))
@@ -1510,7 +1510,7 @@ CROW & CCOL should be the current row & column so they don't have to be recalcul
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
-CROW & CCOL should be the current row & column so they don't have to be recalculated.
+CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
   (let (field)
     (save-excursion
@@ -1528,7 +1528,7 @@ Careful! only use after you've checked the cell satisfies your other jump condit
 ;; simple-call-tree-info: CHECK  
 (defun org-table-match-relative-field (regex roffset coffset crow ccol)
   "Perform `string-match' with REGEX on contents of field at row (CROW+ROFFSET) & column (CCOL+COFFSET). 
-CROW & CCOL should be the current row & column so they don't have to be recalculated.
+CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
 By default ROFFSET & COFFSET are 0.
 If the indices refer to a non-existent field return nil."
   (let ((str (org-table-get-relative-field roffset coffset crow ccol)))
@@ -1552,7 +1552,7 @@ given DIRECTION and matched against the first regexp, when the first mismatch oc
 and used for matching subsequent fields until a mismatch, etc. until there is a mismatch with the last regexp.
 The return value is a list of counts of matches for each regexp.
 This can be used for finding cells based on the content of neighbouring cells.
-CROW & CCOL should be the current row & column so they don't have to be recalculated."
+CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0."
   (let ((counts (make-list (length regexs) 0))
 	(r 0) (c 0))
     (dotimes (i (length regexs))
