@@ -38,7 +38,7 @@ For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-
 The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating
 and altering tables. You can define arbitrary jump conditions which determine the sequence of cells visited
 when *org-table-jump-next* is pressed repeatedly. There are many predefined ones in *org-table-jump-condition-presets*
-which can be selected or altered ("edit preset"), or you can enter a one manually ("enter manually").
+which can be selected or altered ("edit preset"), or you can enter one manually ("enter manually").
 These jump conditions are arbitrary lisp expressions that are evaluated at each cell to determine whether to move
 there or not. The jump condition sexps can make use of locally defined functions in *org-table-filter-function-bindings*
 which are also described in the docstring for *org-table-jump-condition*.
