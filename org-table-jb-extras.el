@@ -421,7 +421,7 @@ Return value is the sum of lengths of the text in the newly combined fields."
 			(mapcar 'car org-table-graph-types))))
 	 (params (cdr-safe (assoc name org-table-graph-types)))
 	 (plotrx "[[:space:]]*#\\+PLOT:[[:space:]]*")
-	 params2)
+	 params2 tofile)
     (if (null params)
 	(save-excursion
 	  (goto-char (org-table-begin))
