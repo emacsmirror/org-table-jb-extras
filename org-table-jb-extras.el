@@ -250,10 +250,10 @@ previous vertical lines will be deleted."
 (defun org-table-flatten-column (nrows fn)
   "Replace current cell with results of applying FN to NROWS cells under, and including, current one.
 If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
-  If NROWS is a negative integer then the NROWS cells above and including the current one will be used.
-  If NROWS is not a number then all cells in the current column between horizontal separator lines will
-  be used. Function FN should take a single argument; a list of the contents of the cells. 
-  Return value is the number of rows used."
+If NROWS is a negative integer then the NROWS cells above and including the current one will be used.
+If NROWS is not a number then all cells in the current column between horizontal separator lines will
+be used. Function FN should take a single argument; a list of the contents of the cells. 
+Return value is a cons cell containing the number of rows used & the length of the newly combined field."
   (unless (org-at-table-p) (error "Not in org-table"))
   (unless (numberp nrows)
     (let ((col (org-table-current-column)))
@@ -272,11 +272,12 @@ If NROWS is a positive integer then the NROWS cells below and including the curr
 			  collect (org-trim (org-table-blank-field))
 			  do (forward-line l)
 			  (while (org-at-table-hline-p) (forward-line l))
-			  (org-table-goto-column col))))
+			  (org-table-goto-column col)))
+	 (newtext (if fn (format "%s" (funcall fn fields)))))
     (goto-char startpos)
-    (if fn (insert (format "%s" (funcall fn fields))))
+    (if newtext (insert newtext))
     (org-table-align)
-    nrows))
+    (cons nrows (length newtext))))
 
 ;;;###autoload
 ;; simple-call-tree-info: TODO make this more flexible with a regexp argument to select rows to flatten
@@ -291,7 +292,8 @@ flatten all columns.
 Alternatively, when called interactively, if region is active then that will be used to determine 
 which cells are used.
 This function calls `org-table-flatten-column' (which see) on columns in the current row.
-If REPEAT is supplied then repeat this process REPEAT times."
+If REPEAT is supplied then repeat this process REPEAT times.
+Return value is the sum of lengths of the text in the newly combined fields."
   (interactive (let* ((regionp (region-active-p))
 		      (regionstart (if regionp (region-beginning)))
 		      (regionend (if regionp (region-end))))
@@ -324,14 +326,17 @@ If REPEAT is supplied then repeat this process REPEAT times."
 			     (max (1+ (+ col ncols)) 1))
 		   maxcol))
 	 (numreps (or repeat 1))
-	 l)
+	 (textlen 0)
+	 l pair)
     (org-table-goto-line startline)
     (org-table-goto-column col)
     (while (and (org-at-table-p) (> numreps 0))
       (cl-loop for c from (min startcol endcol) to (max startcol endcol)
 	       do (org-table-goto-line line)
 	       (org-table-goto-column c)
-	       (setq nrows (org-table-flatten-column nrows fn)))
+	       (setq pair (org-table-flatten-column nrows fn)
+		     nrows (car pair)
+		     textlen (+ textlen (cdr pair))))
       (setq l (if (> nrows 0) 1 -1))
       (forward-line l)
       (dotimes (n (1- (abs nrows)))
@@ -347,7 +352,8 @@ If REPEAT is supplied then repeat this process REPEAT times."
       (setq line (org-table-current-line))
       (setq numreps (1- numreps)))
     (org-table-goto-line startline)
-    (org-table-goto-column col)))
+    (org-table-goto-column col)
+    textlen))
 
 ;;;###autoload
 ;; simple-call-tree-info: CHECK  is this interactive?
