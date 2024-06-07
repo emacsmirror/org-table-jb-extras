@@ -35,7 +35,7 @@ Alternatively if you don't want to depend on external binaries you can use the *
 *org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
 
 For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
-** Navigating/altering org-tables cell-by-cell
+** Navigating/altering org-table cells
 The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is invoked repeatedly.
 There are many predefined jump conditions in *org-table-jump-condition-presets* such as "empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
 
