@@ -913,16 +913,18 @@ not used."
 		      (setfield newfield roffset coffset noprompt)
 		      (org-table-align))))
      . "Convert date in relative field to different format")
-    ;; ((flatten ()
-    ;; 	      org-table-flatten-columns))
+    ((flatten (&optional nrows ncols func reps) (org-table-jump-flatten-cells nrows ncols func reps)) .
+     "See `org-table-flatten-columns'.")
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
-    ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
-     "Count cells with fields matching REGEXS sequentially in a given DIRECTION.")
+    ((countcells (dir roffset coffset &rest regexs)
+		 (apply 'org-table-count-matching-fields dir roffset coffset currentline currentcol regexs)) .
+		 "Count cells with fields matching REGEXS sequentially in a given DIRection.")
     ((checkcounts (counts bounds) (org-table-check-bounds counts bounds)) .
      "Check BOUNDS of each number in COUNTS.")
-    ((sumcounts (d &rest regexs) (apply '+ (apply 'org-table-check-bounds d regexs))) .
-     "Count total No. of matches to REGEXS sequentially in a given DIRECTION.")
+    ((sumcounts (dir roffset coffset &rest regexs)
+		(apply '+ (apply 'org-table-count-matching-fields dir roffset coffset currentline currentcol regexs))) . 
+		"Count total No. of matches to REGEXS sequentially in a given DIRection.")
     ((getvar (key) (cdr (assoc key org-table-jump-state))) .
      "Get the value associated with KEY in `org-table-jump-state'.")
     ((setvar (key val)
@@ -937,8 +939,8 @@ variables have been created, and so can make use of those variables. However fun
 are not usable in `org-table-jump-condition', and be careful not to shadow any existing functions used by
  `org-table-filter-list'.
 These function will only work in a :filter parameter: rowmatch & rowsum
-and these will only work in `org-table-jump-condition': field, matchfield, hline-p, countcells, checkcounts & sumcounts
- (mostly wrapper functions, see the documentation of the functions they wrap for more info)."
+and the functions in the list from field onwards will only work in `org-table-jump-condition' (mostly wrapper 
+functions, see the documentation of the functions they wrap for more info)."
   :group 'org-table
   :type '(repeat (cons (sexp :tag "Function") (string :tag "Description"))))
 
@@ -1353,10 +1355,11 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
     in row (current row + ROFFSET) & column (current column + COFFSET).
  (field2num &optional ROFFSET COFFSET): read a field as a number and return it.
  (changenumber FUNC &optional roffset coffset noprompt): apply FUNC to number in field and replace field with result.
+ (flatten NROWS NCOLS FUNC REPS): a wrapper around `org-table-flatten-columns'.
  (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'.
- (countcells D &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
+ (countcells DIR ROFFSET COFFSET &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
  (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
- (sumcounts D &rest REGEXS): similar to countcells but returns total No. of matches.
+ (sumcounts DIR ROFFSET COFFSET &rest REGEXS): similar to countcells but returns total No. of matches.
  (getvar KEY): get the value associated with KEY in `org-table-jump-state'.
  (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
@@ -1389,55 +1392,56 @@ You can also make use of the following variables:
   "State variable (alist) for use by `org-table-jump-next'.")
 
 ;; simple-call-tree-info: CHECK
-(defcustom org-table-jump-condition-presets '(("1st<>last cell" . 
-					       (or (and (not (checkvar 'firstlast 'first))
-							(setvar 'firstlast 'first)
-							(org-table-goto-line 1)
-							(not (org-table-goto-column 1)))
-						   (and (checkvar 'firstlast 'first)
-							(setvar 'firstlast 'last)
-							(org-table-goto-line numdlines)
-							(not (org-table-goto-column numcols)))))
-					      ("1st<>last row" .
-					       (or (and (not (checkvar 'firstlast 'first))
-							(setvar 'firstlast 'first)
-							(org-table-goto-line 1)
-							(not (org-table-goto-column startcol)))
-						   (and (checkvar 'firstlast 'first)
-							(setvar 'firstlast 'last)
-							(org-table-goto-line numdlines)
-							(not (org-table-goto-column startcol)))))
-					      ("1st<>last col" .
-					       (or (and (not (checkvar 'firstlast 'first))
-							(setvar 'firstlast 'first)
-							(org-table-goto-line startline)
-							(not (org-table-goto-column 1)))
-						   (and (checkvar 'firstlast 'first)
-							(setvar 'firstlast 'last)
-							(org-table-goto-line startline)
-							(not (org-table-goto-column numcols)))))
-					      ("---/cell" . (hline-p -1))
-					      ("cell/---" . (hline-p 1))
-					      ("empty" . (matchfield "^\\s-+$"))
-					      ("non-empty" . (matchfield "\\S-"))
-					      ("empty/cell" .
-					       (and (not (hline-p -1))
-						    (checkcounts (countcells 'up "\\S-" "^\\s-+$") '((1 1) 1))))
-					      ("cell/empty" .
-					       (and (not (hline-p 1))
-						    (checkcounts (countcells 'down "\\S-" "^\\s-+$") '((1 1) 1))))
-					      ("empty|cell" . (and (matchfield "\\S-")
-								   (matchfield "^\\s-+$" 0 -1)))
-					      ("cell|empty" . (and (matchfield "\\S-")
-								   (matchfield "^\\s-+$" 0 1)))
-					      ("every other" . (> cellcount 1))
-					      ("replace empty" . (and (matchfield "^\\s-+$")
-								      (setfield "-")))
-					      ("replace empty (no prompt)" .
-					       (and (matchfield "^\\s-+$")
-						    (setfield "-" 0 0 t)))
-					      ("enter manually" . enter)
-					      ("edit preset" . edit))
+(defcustom org-table-jump-condition-presets
+  '(("1st<>last cell" . 
+     (or (and (not (checkvar 'firstlast 'first))
+	      (setvar 'firstlast 'first)
+	      (org-table-goto-line 1)
+	      (not (org-table-goto-column 1)))
+	 (and (checkvar 'firstlast 'first)
+	      (setvar 'firstlast 'last)
+	      (org-table-goto-line numdlines)
+	      (not (org-table-goto-column numcols)))))
+    ("1st<>last row" .
+     (or (and (not (checkvar 'firstlast 'first))
+	      (setvar 'firstlast 'first)
+	      (org-table-goto-line 1)
+	      (not (org-table-goto-column startcol)))
+	 (and (checkvar 'firstlast 'first)
+	      (setvar 'firstlast 'last)
+	      (org-table-goto-line numdlines)
+	      (not (org-table-goto-column startcol)))))
+    ("1st<>last col" .
+     (or (and (not (checkvar 'firstlast 'first))
+	      (setvar 'firstlast 'first)
+	      (org-table-goto-line startline)
+	      (not (org-table-goto-column 1)))
+	 (and (checkvar 'firstlast 'first)
+	      (setvar 'firstlast 'last)
+	      (org-table-goto-line startline)
+	      (not (org-table-goto-column numcols)))))
+    ("---/cell" . (hline-p -1))
+    ("cell/---" . (hline-p 1))
+    ("empty" . (matchfield "^\\s-+$"))
+    ("non-empty" . (matchfield "\\S-"))
+    ("empty/cell" .
+     (and (not (hline-p -1))
+	  (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-+$") '((1 1) 1))))
+    ("cell/empty" .
+     (and (not (hline-p 1))
+	  (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-+$") '((1 1) 1))))
+    ("empty|cell" . (and (matchfield "\\S-")
+			 (matchfield "^\\s-+$" 0 -1)))
+    ("cell|empty" . (and (matchfield "\\S-")
+			 (matchfield "^\\s-+$" 0 1)))
+    ("every other" . (> cellcount 1))
+    ("replace empty" . (and (matchfield "^\\s-+$")
+			    (setfield "-")))
+    ("replace empty (no prompt)" .
+     (and (matchfield "^\\s-+$")
+	  (setfield "-" 0 0 t)))
+    ("enter manually" . enter)
+    ("edit preset" . edit))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
 evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
@@ -1508,7 +1512,7 @@ When called interactively prompt the user to press a key for the DIRECTION."
 ;; simple-call-tree-info: CHECK  
 (defun org-table-get-relative-field (roffset coffset crow ccol)
   "Return the contents of the field in row (CROW+ROFFSET) & column (CCOL+COFFSET).
-CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated."
+CROW & CCOL should be the current row & column so they don't have to be recalculated."
   (save-excursion
     (if (/= roffset 0)
 	(if (not (org-table-goto-line (+ crow roffset)))
@@ -1521,7 +1525,7 @@ CROW & CCOL should ALWAYS be the current row & column so they don't have to be r
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
-CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated.
+CROW & CCOL should be the current row & column so they don't have to be recalculated.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
   (let (field)
     (save-excursion
@@ -1539,7 +1543,7 @@ Careful! only use after you've checked the cell satisfies your other jump condit
 ;; simple-call-tree-info: CHECK  
 (defun org-table-match-relative-field (regex roffset coffset crow ccol)
   "Perform `string-match' with REGEX on contents of field at row (CROW+ROFFSET) & column (CCOL+COFFSET). 
-CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated.
+CROW & CCOL should be the current row & column so they don't have to be recalculated.
 By default ROFFSET & COFFSET are 0.
 If the indices refer to a non-existent field return nil."
   (let ((str (org-table-get-relative-field roffset coffset crow ccol)))
@@ -1554,24 +1558,23 @@ If the indices refer to a non-existent field return nil."
     (org-at-table-hline-p)))
 
 ;; simple-call-tree-info: CHECK  
-(defun org-table-count-matching-fields (direction crow ccol &rest regexs)
+(defun org-table-count-matching-fields (direction roffset coffset crow ccol &rest regexs)
   "Count fields matching REGEXS sequentially in a given DIRECTION.
-DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction
-of movement from the current field, or if used in `org-table-jump-condition'
-the variable `movedir' can be used for the current direction of movement.
-Starting with the current field, fields are traversed sequentially in
-the given DIRECTION and matched against the first regexp, when the first
-mismatch occurs the next regexp is tried and used for matching subsequent
-fields until a mismatch, etc. until there is a mismatch with the last regexp.
+DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction of movement from the starting cell. 
+You can use the variable `movedir' in `org-table-jump-condition' for the current direction of movement.
+Starting with cell in row CROW+ROFFSET, and column CCOL+COFFSET, fields are traversed sequentially in the
+given DIRECTION and matched against the first regexp, when the first mismatch occurs the next regexp is tried 
+and used for matching subsequent fields until a mismatch, etc. until there is a mismatch with the last regexp.
 The return value is a list of counts of matches for each regexp.
 This can be used for finding cells based on the content of neighbouring cells.
-CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated."
+CROW & CCOL should be the current row & column so they don't have to be recalculated."
   (let ((counts (make-list (length regexs) 0))
 	(r 0) (c 0))
     (dotimes (i (length regexs))
-      (while (org-table-match-relative-field (nth i regexs) r c crow ccol)
+      (while (org-table-match-relative-field
+	      (nth i regexs) (+ r roffset) (+ c coffset) crow ccol)
 	(incf (nth i counts))
-	(case d
+	(case direction
 	  (up (decf r))
 	  (down (incf r))
 	  (left (decf c))
@@ -1585,7 +1588,8 @@ CROW & CCOL should ALWAYS be the current row & column so they don't have to be r
 COUNTS should be a list of numbers, and BOUNDS a list of the same length containing
 a mixture of numbers and lists of length 2. Each number c in COUNTS is checked against
 the corresponding element b in BOUNDS as follows: if b is a single number check (>= c b),
-if b is a list check (and (>= c (first b)) (<= c (second b)))"
+if b is a list check (and (>= c (first b)) (<= c (second b))). 
+If any bound is not satisfied nil is returned, otherwise non-nil."
   (-all-p 'identity (cl-mapcar (lambda (c b)
 				 (if (numberp b)
 				     (>= c b)
@@ -1673,6 +1677,41 @@ by default is `org-table-timestamp-format'."
 	(string-replace substr
 			(format-time-string (or outfmt org-table-timestamp-format) unixts)
 			field)))))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-jump-flatten-cells (nrows ncols func reps)
+  "Wrapper of `org-table-flatten-columns' for setting NROWS, NCOLS, FUNC & REPS when used in `org-table-jump-condition'."
+  (let ((nrows (if (eq nrows 'prompt)
+		   (read-number "Number of rows (-ve numbers count backwards): ")
+		 (or nrows
+		     (and (not current-prefix-arg)
+			  (cdr (assoc 'flattenrows org-table-jump-state)))
+		     (and (not (listp current-prefix-arg))
+			  (prefix-numeric-value current-prefix-arg))
+		     (read-number "Number of rows (-ve numbers count backwards): "))))
+	(ncols (if (eq ncols 'prompt)
+		   (read-number "Number of rows (-ve numbers count backwards): ")
+		 (or ncols
+		     (and current-prefix-arg
+			  (listp current-prefix-arg)
+			  (read-number "Number of rows (-ve numbers count backwards): "))
+		     (cdr (assoc 'flattencols org-table-jump-state))
+		     1)))
+	(func (if (eq func 'prompt)
+		  (ido-choose-function org-table-flatten-functions nil
+				       "User function with one arg (list of fields): " t)
+		(or func
+		    (cdr (assoc 'flattenfunc org-table-jump-state))
+		    (lambda (lst) (mapconcat 'identity lst " ")))))
+	(reps (if (eq reps 'prompt)
+		  (read-number "Number or repetitions: " 1)
+		(or (cdr (assoc 'flattenreps org-table-jump-state))
+		    1))))
+    (setf (alist-get 'flattenrows org-table-jump-state) nrows)
+    (setf (alist-get 'flattencols org-table-jump-state) ncols)
+    (setf (alist-get 'flattenfunc org-table-jump-state) func)
+    (setf (alist-get 'flattenreps org-table-jump-state) reps)
+    (org-table-flatten-columns nrows ncols func reps)))
 
 ;; simple-call-tree-info: DONE
 (defun org-table-jump-next (steps &optional stopcond movedir)
