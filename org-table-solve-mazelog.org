@@ -1,0 +1,319 @@
+Just for fun here's an example showing how `org-table-jump` can be used to solve [[http://www.mazelog.com][mazelog puzzles]].
+
+For each puzzle, represented by an org-table, the goal is to move from the top left cell to the bottom right cell in the fewest jumps, moving either horizontally, vertically or diagonally in each jump.
+There are several different types of puzzle each of which has different rules restricting the moves allowed.
+
+To find a solution automatically using org-table-jump;
+ - Make sure you have installed & loaded [[file:org-table-jb-extras.el::Installation][org-table-jb-extras]].
+ - Evaluate the elisp code in the source code block below by moving the cursor to the [[depth-first-search-solver][#+BEGIN_SRC]] line and pressing `C-c C-c`
+   (this defines the function `org-table-solve-mazelog` for performing depth first search using `org-table-jump`).
+ - Evaluate the elisp code block under the subheader for the puzzle type you want to solve.
+   (this sets the jumping rules that `org-table-jump` will use to at each step).
+ - Move the cursor to the line above the particular puzzle you want to solve, and either press `C-c C-c` on the "src_elisp" line, 
+   or do: M-x org-table-solve-mazelog
+
+This will then move the cursor around the maze as it tries to find a solution. When it has found one it will be printed underneath. This solution is not guaranteed to be optimal since it just uses a basic depth first search algorithm, and stops at the first solution found. However you can try different search directions, which can result in different solutions, by setting the first argument to `org-table-solve-mazelog` on the "src_elisp" line to one of; 'up, 'down, 'left, or 'right. You can also alter the amount of time that the cursor waits between jumps by setting the second argument (by default it's 0.1 seconds).
+
+#+NAME: depth-first-search-solver
+#+BEGIN_SRC emacs-lisp :results none
+  (defun org-table-solve-mazelog (&optional direction pause)
+    (interactive)
+    (setq org-table-jump-state nil)
+    (when direction (setcar org-table-jump-condition direction))
+    (when (not (org-at-table-p))
+      (re-search-forward "^|" (+ (point) 1000) t)
+      (if (not (org-at-table-p))
+	  (error "Cannot find org-table below point")
+	(org-table-goto-line 1)
+	(org-table-goto-column 1)
+	(setq org-table-overlay-coordinates t)
+	(org-table-align)))
+    (let ((count 1)
+	  (pos nil))
+      (while (and (org-at-table-p)
+		  (not (= (string-to-number (org-table-get-field)) 0))
+		  (< count 100))
+	(redisplay)
+	(sit-for (or pause 0.1))
+	(org-table-jump-next 1)
+	(if (equal pos (cons (org-table-current-line)
+			     (org-table-current-column)))
+	    (org-table-jump-prev 1)
+	  (setq count (1+ count)))
+	(setq pos (cons (org-table-current-line)
+			(org-table-current-column))))
+      (let ((path (cdr (assoc 'path org-table-jump-state))))
+	(if (not (= (string-to-number (org-table-get-field)) 0))
+	    (message "UNABLE TO SOLVE!")
+	  (goto-char (org-table-end))
+	  (insert (format "\nSOLUTION (search %s, %s steps):\n%s"
+			  (symbol-name (car org-table-jump-condition))
+			  (number-to-string (1- (length path)))
+			  (mapconcat (lambda (x) (concat "(" (number-to-string (car x))
+							 "," (number-to-string (cdr x)) ")"))
+				     (reverse path) "->")))))))
+#+END_SRC
+
+#+NAME: set-jump-condition	
+#+BEGIN_SRC emacs-lisp :results none :var nextstep='nil :var prevstep='t :var direction='right 
+  (setq org-table-jump-state nil
+	org-table-jump-condition
+	(cons direction
+	      `(let* ((n (string-to-number startfield))
+		      (startpos (cons startline startcol))
+		      (newpos (cons currentline currentcol))
+		      ;; path contains fields travelled forwards from initial field to current field
+		      (path (or (getvar 'path) (setvar 'path (list startpos))))
+		      (pathlen (length path))
+		      ;; visited contains fields we've already visited, that are not on the current path
+		      (visited (getvar 'visited)))
+		 ;; store values with already visited cells for recording things such as parity
+		 (cl-flet ((getvisited (x) (mapcar 'cdr (remove-if-not (lambda (y) (equal x (car y))) visited)))
+			   (addvisited (x v) (setvar 'visited (cons (cons x v) visited))))
+		   (if (= n 0)
+		       (not (message "SOLUTION = %s" (reverse path)))
+		     (if (< steps 0)
+			 ;; go back to previous field in path
+			 ;; (in this case we don't care about currentline & currentpos, and we always accept)
+			 (let ((newpath (cdr path)))
+			   (and
+			    (equal newpos (car newpath)) ;match with previous position in path
+			    (if (null newpath) (error "Empty path") t)
+			    (setvar 'path newpath) ; this must come after the match
+			    (setq pathlen (1- pathlen))
+			    ,prevstep    ; futher problem specific code 
+			    (or (org-table-align) t)
+			    (message "Path: %s" (reverse newpath))))
+		       ;; check field position
+		       (if ,nextstep
+			   (let ((newpath (setvar 'path (cons newpos path)))) 
+			     (org-table-align)
+			     (message "Path: %s" (reverse newpath))))))))))
+#+END_SRC
+
+* Puzzles
+** Jumping mazes
+Rules:
+ - The number in each cell of the following table tells you how far you can jump horizontally, vertically or diagonally from that cell.
+ - There may be further rules that apply to the puzzles under each subheader, and these are explained below.
+
+*** Diagonals allowed
+Evaluate the following code block by pressing C-c C-c on the following line before evaluating further code in this section.
+#+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*)))
+  (cons
+   '(addvisited startpos t)
+   ;;'(setvar 'visited (cons startpos visited))
+   '(and (not (getvisited newpos))
+	 ;;(or (debug nil (list 'startpos startpos 'newpos newpos 'getv (getvisited newpos) 'path path 'visited visited)) t)
+	 (not (member newpos path))
+	 (member (abs (- currentcol startcol)) (list 0 n))
+	 (member (abs (- currentline startline)) (list 0 n))))
+#+END_SRC
+
+#+RESULTS:
+: nil
+
+**** [[http://www.mazelog.com/show?U][Dizzy diagonals]]
+src_elisp[:results none]{(org-table-solve-mazelog 'down)}
+|---+---+---+---+---|
+| 1 | 1 | 3 | 2 | 1 |
+| 4 | 4 | 3 | 3 | 2 |
+| 1 | 3 | 4 | 3 | 3 |
+| 3 | 3 | 3 | 3 | 4 |
+| 2 | 3 | 3 | 2 | 0 |
+|---+---+---+---+---|
+
+SOLUTION (search down, 13 steps):
+(1,1)->(2,1)->(2,5)->(4,5)->(4,1)->(1,4)->(3,4)->(3,1)->(4,2)->(1,5)->(2,4)->(5,4)->(5,2)->(5,5)
+**** [[http://www.mazelog.com/show?Z9][Bumblebee]]
+src_elisp[:results none]{(org-table-solve-mazelog 'down)}
+
+|---+---+---+---+---+---+---+---|
+| 2 | 3 | 3 | 2 | 3 | 2 | 3 | 2 |
+| 3 | 2 | 2 | 3 | 2 | 4 | 2 | 2 |
+| 3 | 2 | 3 | 2 | 3 | 2 | 3 | 2 |
+| 2 | 3 | 3 | 3 | 2 | 3 | 2 | 3 |
+| 3 | 2 | 3 | 3 | 3 | 2 | 3 | 2 |
+| 2 | 1 | 2 | 3 | 2 | 4 | 2 | 2 |
+| 1 | 3 | 3 | 2 | 3 | 3 | 2 | 2 |
+| 2 | 2 | 2 | 3 | 2 | 3 | 2 | 0 |
+|---+---+---+---+---+---+---+---|
+
+SOLUTION (search down, 7 steps):
+(1,1)->(3,3)->(6,6)->(2,2)->(4,4)->(7,7)->(5,5)->(8,8)
+*** Diagonals not allowed
+For these puzzles diagonal moves are not allowed.
+
+Evaluate the following code block by pressing C-c C-c on the following line before evaluating further code in this section.
+#+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*)))
+  (cons
+   '(addvisited startpos t)
+   '(and (not (getvisited newpos))
+	 (not (member newpos path))
+	 (or (and (= currentline startline)
+		  (= (abs (- currentcol startcol)) n))
+	     (and (= currentcol startcol)
+		  (= (abs (- currentline startline)) n)))))
+#+END_SRC
+
+#+RESULTS:
+: nil
+ 
+**** [[http://www.mazelog.com/show?8D][Chain Reaction]]
+src_elisp[:results none]{(org-table-solve-mazelog 'down)}
+|---+---+---+---+---+---|
+| 4 | 4 | 2 | 2 | 2 | 5 |
+| 5 | 1 | 2 | 3 | 1 | 2 |
+| 3 | 3 | 3 | 2 | 3 | 4 |
+| 2 | 1 | 2 | 2 | 3 | 5 |
+| 3 | 3 | 3 | 3 | 4 | 1 |
+| 4 | 3 | 5 | 2 | 5 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search down, 15 steps):
+(1,1)->(5,1)->(5,4)->(2,4)->(2,1)->(2,6)->(4,6)->(4,1)->(4,3)->(4,5)->(4,2)->(5,2)->(2,2)->(1,2)->(1,6)->(6,6)
+
+**** [[http://www.mazelog.com/show?6][Hopscotch]]
+src_elisp[:results none]{(org-table-solve-mazelog 'down)}
+|---+---+---+---+---|
+| 3 | 4 | 3 | 2 | 4 |
+| 2 | 3 | 3 | 3 | 2 |
+| 3 | 3 | 2 | 1 | 3 |
+| 3 | 2 | 1 | 3 | 1 |
+| 4 | 4 | 3 | 2 | 0 |
+|---+---+---+---+---|
+
+SOLUTION (search down, 12 steps):
+(1,1)->(4,1)->(4,4)->(1,4)->(3,4)->(3,3)->(1,3)->(4,3)->(4,2)->(2,2)->(2,5)->(4,5)->(5,5)
+
+*** Alternating direction
+For these puzzles the first move must be horizontal or vertical, the second diagonal, then horizontal/vertical again, etc.
+i.e. the moves must alternate between horizontal/vertical moves, and diagonal moves.
+
+Evaluate the following code block by pressing C-c C-c on the following line before evaluating further code in this section.
+#+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*))) 
+  (cons '(addvisited startpos (if (oddp pathlen) 'odd 'even))
+	'(let ((parity1 (if (oddp pathlen) 'odd 'even))
+	       (pathpos (position newpos (reverse path) :test 'equal))
+	       (linediff (- currentline startline))
+	       (coldiff (- currentcol startcol)))
+	   (and (not (memq parity1 (cons (and pathpos (if (oddp pathpos) 'odd 'even))
+					 (getvisited newpos))))
+		(if (eq parity1 'odd)
+		    (or (and (= currentline startline) (= (abs coldiff) n))
+			(and (= currentcol startcol) (= (abs linediff) n)))
+		  (and (= (abs coldiff) n) (= (abs linediff) n)))
+		(not (> (count newpos visited :test (lambda (x y) (equal x (car y)))) 1))
+		(not (> (count newpos path :test (lambda (x y) (equal x y))) 1)))))
+#+END_SRC
+
+#+RESULTS:
+: nil
+
+**** [[http://www.mazelog.com/show?BY][Switch miss]]
+src_elisp[:results none]{(org-table-solve-mazelog 'down)}
+|---+---+---+---+---+---|
+| 2 | 3 | 2 | 3 | 1 | 2 |
+| 4 | 3 | 1 | 2 | 3 | 2 |
+| 3 | 2 | 2 | 3 | 3 | 3 |
+| 2 | 2 | 2 | 3 | 2 | 2 |
+| 2 | 2 | 2 | 2 | 1 | 2 |
+| 3 | 5 | 3 | 3 | 5 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search down, 15 steps):
+(1,1)->(1,3)->(3,5)->(3,2)->(1,4)->(1,1)->(3,3)->(3,5)->(6,2)->(1,2)->(4,5)->(4,3)->(2,5)->(5,5)->(4,6)->(6,6)
+**** [[http://www.mazelog.com/show?C6][Horizon]]
+src_elisp[:results none]{(org-table-solve-mazelog)}
+|---+---+---+---+---+---|
+| 3 | 2 | 1 | 2 | 3 | 2 |
+| 1 | 3 | 3 | 2 | 3 | 3 |
+| 2 | 2 | 2 | 4 | 2 | 2 |
+| 2 | 3 | 4 | 2 | 2 | 3 |
+| 1 | 3 | 2 | 1 | 3 | 2 |
+| 2 | 2 | 2 | 2 | 3 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search down, 14 steps):
+(1,1)->(4,1)->(2,3)->(5,3)->(3,1)->(1,1)->(4,4)->(4,6)->(1,3)->(2,3)->(5,6)->(3,6)->(5,4)->(4,4)->(6,6)
+
+**** [[http://www.mazelog.com/show?U9][One Two Three]]
+src_elisp[:results none]{(org-table-solve-mazelog 'up)}
+|---+---+---+---+---+---|
+| 3 | 2 | 2 | 2 | 2 | 3 |
+| 2 | 3 | 3 | 1 | 1 | 1 |
+| 3 | 1 | 2 | 2 | 3 | 2 |
+| 2 | 3 | 2 | 2 | 3 | 1 |
+| 3 | 3 | 2 | 1 | 2 | 3 |
+| 2 | 1 | 2 | 1 | 2 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search up, 22 steps):
+(1,1)->(1,4)->(3,2)->(2,2)->(5,5)->(3,5)->(6,2)->(5,2)->(2,5)->(2,4)->(1,3)->(1,1)->(4,4)->(6,4)->(5,3)->(5,1)->(2,4)->(2,5)->(3,4)->(3,6)->(5,4)->(4,4)->(6,6)
+**** [[http://www.mazelog.com/show?IT][Lightswitch]]
+src_elisp[:results none]{(org-table-solve-mazelog 'left)}
+|---+---+---+---+---+---|
+| 2 | 5 | 2 | 2 | 4 | 3 |
+| 2 | 2 | 2 | 4 | 2 | 3 |
+| 4 | 2 | 4 | 2 | 3 | 2 |
+| 4 | 3 | 2 | 2 | 4 | 3 |
+| 1 | 1 | 2 | 3 | 2 | 2 |
+| 2 | 3 | 1 | 2 | 1 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search left, 17 steps):
+(1,1)->(1,3)->(3,5)->(3,2)->(1,4)->(3,4)->(1,6)->(4,6)->(1,3)->(1,5)->(5,1)->(5,2)->(6,3)->(6,4)->(4,6)->(4,3)->(6,5)->(6,6)
+
+*** No U-turn
+For these puzzles diagonal jumps aren't allowed and a move cannot be followed by another move in the opposite direction.
+
+Evaluate the following code block by pressing C-c C-c on the following line before evaluating further code in this section.
+#+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*)))
+  (cons
+   ;; keep a track of which direction previously visited cells were reached from
+   '(and (addvisited startpos newpos)
+	 (setvar 'visited (remove-if-not (lambda (x) (member (cdr x) path)) (getvar 'visited))))
+   '(let* ((prevpos (cadr path))
+	   (linediff1 (- currentline startline))
+	   (coldiff1 (- currentcol startcol))
+	   (linediff2 (and prevpos (- (car prevpos) startline)))
+	   (coldiff2 (and prevpos (- (cdr prevpos) startcol))))
+      (and (not (member startpos (getvisited newpos))) 
+	   (or (and (= linediff1 0) ;horizontal move
+		    (= (abs coldiff1) n)
+		    (not (equal (signum coldiff1) (and coldiff2 (signum coldiff2))))) ;not backward move
+	       (and (= coldiff1 0) ;vertical move
+		    (= (abs linediff1) n)
+		    (not (equal (signum linediff1) (and linediff2 (signum linediff2)))))) ;not backward move
+	   (addvisited newpos startpos))))
+#+END_SRC
+
+#+RESULTS:
+: nil
+
+**** [[http://www.mazelog.com/show?JA][Reflex]]
+src_elisp[:results none]{(org-table-solve-mazelog 'right)}
+|---+---+---+---+---+---|
+| 3 | 2 | 2 | 4 | 1 | 1 |
+| 2 | 3 | 1 | 3 | 3 | 4 |
+| 3 | 2 | 3 | 2 | 3 | 1 |
+| 2 | 1 | 1 | 3 | 2 | 1 |
+| 2 | 3 | 2 | 2 | 2 | 2 |
+| 1 | 3 | 1 | 2 | 3 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search right, 21 steps):
+(1,1)->(1,4)->(5,4)->(5,6)->(3,6)->(3,5)->(6,5)->(6,2)->(3,2)->(3,4)->(3,6)->(4,6)->(4,5)->(4,3)->(4,2)->(4,1)->(2,1)->(2,3)->(3,3)->(6,3)->(6,4)->(6,6)
+**** [[http://www.mazelog.com/show?9T][Noun]]
+src_elisp[:results none]{(org-table-solve-mazelog 'up)}
+|---+---+---+---+---+---|
+| 3 | 3 | 3 | 2 | 3 | 1 |
+| 1 | 3 | 2 | 2 | 3 | 2 |
+| 1 | 3 | 1 | 2 | 3 | 2 |
+| 3 | 3 | 3 | 3 | 3 | 3 |
+| 2 | 4 | 3 | 2 | 2 | 2 |
+| 4 | 1 | 5 | 3 | 1 | 0 |
+|---+---+---+---+---+---|
+
+SOLUTION (search up, 24 steps):
+(1,1)->(1,4)->(1,6)->(2,6)->(2,4)->(2,2)->(5,2)->(5,6)->(3,6)->(3,4)->(3,2)->(6,2)->(6,1)->(2,1)->(2,2)->(2,5)->(5,5)->(5,3)->(2,3)->(2,1)->(3,1)->(3,2)->(3,5)->(6,5)->(6,6)
