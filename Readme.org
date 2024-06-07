@@ -36,7 +36,7 @@ Alternatively if you don't want to depend on external binaries you can use the *
 
 For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
 ** Navigating/altering org-tables cell-by-cell
-The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is pressed repeatedly.
+The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is called repeatedly.
 There are many predefined jump conditions in *org-table-jump-condition-presets* such as "empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
 
 These presets can be selected, altered ("edit preset"), or you can define you own ("enter manually") using an arbitrary lisp expression. In the latter case you can make use of functions defined in *org-table-filter-function-bindings*. These functions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks (see [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]]). 
