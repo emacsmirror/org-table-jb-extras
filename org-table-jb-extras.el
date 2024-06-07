@@ -311,11 +311,12 @@ If REPEAT is supplied then repeat this process REPEAT times."
 		  (ido-choose-function
 		   org-table-flatten-functions nil "User function with one arg (list of fields): " t)
 		  (if regionp 1 (read-number "Number or repetitions: " 1)))))
+  (if (not (org-at-table-p)) (error "No org-table at point"))
   (let* ((startline (org-table-current-line))
 	 (line startline)
 	 (col (org-table-current-column))
 	 (maxcol (save-excursion (end-of-line)
-				 (org-table-previous-field)
+				 (search-backward "|")
 				 (org-table-current-column)))
 	 (startcol (if ncols col 1))
 	 (endcol (if ncols (if (> ncols 0)
