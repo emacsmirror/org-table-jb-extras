@@ -258,7 +258,7 @@ Return value is a cons cell containing the number of rows used & the length of t
     (cons nrows (length newtext))))
 
 ;;;###autoload
-;; simple-call-tree-info: TODO make this more flexible with a regexp argument to select rows to flatten
+;; simple-call-tree-info: CHECK
 (defun org-table-flatten-columns (nrows ncols fn &optional repeat)
   "Apply FN to next NROWS cells in selected columns and replace cells in current row with results.
 If NROWS is a positive integer then the NROWS cells below and including the current one will be used.
@@ -670,7 +670,7 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 
 ;;;###autoload
 (when (fboundp 'run-ampl-async)
-  ;; simple-call-tree-info: TODO what about converse; i.e. reduce height of table by combining rows?
+  ;; simple-call-tree-info: CHECK 
   (defun org-table-narrow (width &optional arg fixedcols)
     "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 FIXEDCOLS should be a list of indices of the columns that shouldn't be narrowed (starting at 0).
@@ -1079,7 +1079,7 @@ row by row, but you may transpose the table afterwards using `org-table-transpos
   "Insert org table (represented as a list of lists) at point."
   (org-table-lisp-to-string lst t))
 
-;; simple-call-tree-info: TODO allow selecting rows by regexp?
+;; simple-call-tree-info: CHECK
 (defun org-table-insert-hlines (lst rows)
   "Insert hlines into an org table LST (represented as a list of lists).
 The hlines will be inserted at the row numbers in the list ROWS (starting

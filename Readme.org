@@ -28,15 +28,12 @@ In order to make the table narrower without losing content new rows need to be c
 You can create the rows and split the cells using *org-table-wrap-region* however this is tedious and error prone.
 
 The problem of choosing which cells should be split, and where new rows should be added can be formulated as a non-linear optimization problem, and written as an [[https://en.wikipedia.org/wiki/AMPL][AMPL]] program: [[https://github.com/vapniks/org-table-jb-extras/blob/main/table_widths.mod][table_widths.mod]]
-The command *org-table-narrow* uses this program to narrow the org-table at point to the desired width. To run it you need a copy of AMPL (A Mathematical Programming Language) and a solver, which can be downloaded for free from [[https://ampl.com/ce][here]]. You also need my fork of [[https://github.com/vapniks/ampl-mode][ampl-mode.el]] which includes the new functions *run-ampl* and *run-ampl-async*.
+The command *org-table-narrow* uses this program to narrow the org-table at point to the desired width (without splitting words).
+To run it you need a copy of AMPL (A Mathematical Programming Language) and a solver, which can be downloaded for free from [[https://ampl.com/ce][here]]. You also need my fork of [[https://github.com/vapniks/ampl-mode][ampl-mode.el]] which includes the new functions *run-ampl* and *run-ampl-async*.
 
 Alternatively if you don't want to depend on external binaries you can use the *org-table-narrow-column* command to narrow a single column of the table by introducing new rows.
 
 If you want more fine-grained control you can use *org-table-flatten-columns* to select exactly which cells should be combined, and how they should be combined (see *org-table-flatten-functions*). When used in combination with *org-table-jump-next* (using *flatten*, see below) and keyboard macros this can be very convenient.
-** Filtering org-tables
-*org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
-
-For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
 ** Navigating/altering org-table cells
 The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is invoked repeatedly.
 There are many predefined jump conditions in *org-table-jump-condition-presets* such as "empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
@@ -60,9 +57,13 @@ To use it, put point in an org-table, do *C-u M-x org-table-jump-next*, choose "
 into this one:
 | foo | bar choo zoo |
 | aaa | bbb          |
-After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as marking the newly combined cells.
+After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as inserting horizontal lines.
 
 Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks. The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of this.
+** Filtering org-tables
+*org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
+
+For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
 * Commands & keybindings
 
  Below is a complete list of commands:
