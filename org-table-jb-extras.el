@@ -532,12 +532,14 @@ If REPEAT is supplied then repeat this process REPEAT times."
 
 ;;;###autoload
 ;; simple-call-tree-info: STARTED  
-(defcustom org-table-dispatch-actions '(("copy table" . (lambda (lst) (kill-new (org-table-lisp-to-string lst))))
-					("copy rectangle" . (lambda (lst)
-							      (setq killed-rectangle
-								    (split-string (org-table-lisp-to-string lst)
-										  "\n"))))
-					("kill/clear cells" . (lambda (lst) (kill-new (org-table-lisp-to-string lst))))
+(defcustom org-table-dispatch-actions '(("copy cells in region to org-table-clip" . org-table-copy-region)
+					("cut cells in region to org-table-clip" . org-table-cut-region)
+					("paste copied cells from org-table-clip" . org-table-paste-rectangle)
+					("copy table to kill ring" . (lambda (lst) (kill-new (org-table-lisp-to-string lst))))
+					("copy cells in region to rectangle" . (lambda (lst)
+										 (setq killed-rectangle
+										       (split-string (org-table-lisp-to-string lst)
+												     "\n"))))
 					("export to file" . (lambda (lst)
 							      (with-temp-buffer
 								(insert (org-table-lisp-to-string lst))
