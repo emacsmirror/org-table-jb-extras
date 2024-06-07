@@ -102,9 +102,7 @@ Evaluate the following code block by pressing *C-c C-c* on the following line be
 #+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*)))
   (cons
    '(addvisited startpos t)
-   ;;'(setvar 'visited (cons startpos visited))
    '(and (not (getvisited newpos))
-	 ;;(or (debug nil (list 'startpos startpos 'newpos newpos 'getv (getvisited newpos) 'path path 'visited visited)) t)
 	 (not (member newpos path))
 	 (member (abs (- currentcol startcol)) (list 0 n))
 	 (member (abs (- currentline startline)) (list 0 n))))
