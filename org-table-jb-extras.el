@@ -913,6 +913,8 @@ not used."
 		      (setfield newfield roffset coffset noprompt)
 		      (org-table-align))))
      . "Convert date in relative field to different format")
+    ;; ((flatten ()
+    ;; 	      org-table-flatten-columns))
     ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (d &rest regexs) (apply 'org-table-count-matching-fields d currentline currentcol regexs)) .
@@ -924,7 +926,6 @@ not used."
     ((getvar (key) (cdr (assoc key org-table-jump-state))) .
      "Get the value associated with KEY in `org-table-jump-state'.")
     ((setvar (key val)
-	     
 	     (setf (alist-get key org-table-jump-state) val) val) .
 	     "Set the value associated with KEY in `org-table-jump-state' to VAL, and return VAL.")
     ((checkvar (key &rest vals) (member (getvar key) vals)) .
