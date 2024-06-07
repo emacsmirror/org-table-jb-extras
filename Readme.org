@@ -32,7 +32,7 @@ The command *org-table-narrow* uses this program to narrow the org-table at poin
 
 Alternatively if you don't want to depend on external binaries you can use the *org-table-narrow-column* command to narrow a single column of the table by introducing new rows.
 
-If you want more fine-grained control you can use *org-table-flatten-columns* to select exactly which cells should be combined, and show they should be combined (by appending, prepending, summing values, etc). When used in combination with *org-table-jump-next* (see below) and keyboard macros this can be a very powerful tool.
+If you want more fine-grained control you can use *org-table-flatten-columns* to select exactly which cells should be combined, and how they should be combined (by appending, prepending, summing values, etc). When used in combination with *org-table-jump-next* (see below) and keyboard macros this can be a very powerful tool.
 ** Filtering org-tables
 *org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
 
