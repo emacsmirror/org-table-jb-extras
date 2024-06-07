@@ -1,18 +1,18 @@
-Just for fun here's an example showing how `org-table-jump` can be used to solve [[http://www.mazelog.com][mazelog puzzles]].
+Just for fun here's an example showing how *org-table-jump* can be used to solve [[http://www.mazelog.com][mazelog puzzles]].
 
 For each puzzle, represented by an org-table, the goal is to move from the top left cell to the bottom right cell in the fewest jumps, moving either horizontally, vertically or diagonally in each jump.
 There are several different types of puzzle each of which has different rules restricting the moves allowed.
 
 To find a solution automatically using org-table-jump;
  - Make sure you have installed & loaded [[file:org-table-jb-extras.el::Installation][org-table-jb-extras]].
- - Evaluate the elisp code in the source code block below by moving the cursor to the [[depth-first-search-solver][#+BEGIN_SRC]] line and pressing `C-c C-c`
-   (this defines the function `org-table-solve-mazelog` for performing depth first search using `org-table-jump`).
+ - Evaluate the elisp code in the source code block below by moving the cursor to the [[depth-first-search-solver][#+BEGIN_SRC]] line and pressing *C-c C-c*
+   (this defines the function *org-table-solve-mazelog* for performing depth first search using *org-table-jump*).
  - Evaluate the elisp code block under the subheader for the puzzle type you want to solve.
-   (this sets the jumping rules that `org-table-jump` will use to at each step).
- - Move the cursor to the line above the particular puzzle you want to solve, and either press `C-c C-c` on the "src_elisp" line, 
+   (this sets the jumping rules that *org-table-jump* will use to at each step).
+ - Move the cursor to the line above the particular puzzle you want to solve, and either press *C-c C-c* on the "src_elisp" line, 
    or do: M-x org-table-solve-mazelog
 
-This will then move the cursor around the maze as it tries to find a solution. When it has found one it will be printed underneath. This solution is not guaranteed to be optimal since it just uses a basic depth first search algorithm, and stops at the first solution found. However you can try different search directions, which can result in different solutions, by setting the first argument to `org-table-solve-mazelog` on the "src_elisp" line to one of; 'up, 'down, 'left, or 'right. You can also alter the amount of time that the cursor waits between jumps by setting the second argument (by default it's 0.1 seconds).
+This will then move the cursor around the maze as it tries to find a solution. When it has found one it will be printed underneath. This solution is not guaranteed to be optimal since it just uses a basic depth first search algorithm, and stops at the first solution found. However you can try different search directions, which can result in different solutions, by setting the first argument to *org-table-solve-mazelog* on the "src_elisp" line to one of; 'up, 'down, 'left, or 'right. You can also alter the amount of time that the cursor waits between jumps by setting the second argument (by default it's 0.1 seconds).
 
 #+NAME: depth-first-search-solver
 #+BEGIN_SRC emacs-lisp :results none
