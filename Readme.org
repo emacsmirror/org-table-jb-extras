@@ -25,12 +25,12 @@ actions from *org-table-dispatch-actions* is offered to the user. These actions 
 ** Reshaping org-tables
 Sometimes I try to export an org file to latex/pdf, and I find that the table no longer fits the page with the desired font size.
 In order to make the table narrower without losing content new rows need to be created to hold spillover text from cells above.
-However you generally want to minimize the number of extra rows created for this task.
+You can create the rows and split the cells using *org-table-wrap-region* however this is tedious and error prone.
 
 The problem of choosing which cells should be split, and where new rows should be added can be formulated as a non-linear optimization problem, and written as an [[https://en.wikipedia.org/wiki/AMPL][AMPL]] program: [[https://github.com/vapniks/org-table-jb-extras/blob/main/table_widths.mod][table_widths.mod]]
 The command *org-table-narrow* uses this program to narrow the org-table at point to the desired width. To run it you need a copy of AMPL (A Mathematical Programming Language) and a solver, which can be downloaded for free from [[https://ampl.com/ce][here]].
 
-Alternatively if you don't want to depend on external binaries you can use the *org-table-narrow-column* command to narrow a single column of the table.
+Alternatively if you don't want to depend on external binaries you can use the *org-table-narrow-column* command to narrow a single column of the table by introducing new rows.
 ** Filtering org-tables
 *org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
 
