@@ -39,14 +39,10 @@ For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-
 The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is invoked repeatedly.
 There are many predefined jump conditions in *org-table-jump-condition-presets* such as "empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
 
-These presets can be selected, altered ("edit preset"), or you can define you own ("enter manually") using an arbitrary lisp expression. In the latter case you can make use of functions defined in *org-table-filter-function-bindings*. These functions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks (see [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]]). 
+These presets can be selected, altered ("edit preset"), or you can define you own ("enter manually") using an arbitrary lisp expression, by either use a C-u prefix arg with *org-table-jump-next/org-table-jump-prev* or calling *org-table-set-jump-condition*.
+You can also select the order in which cells are checked by using a double C-u prefix when calling *org-table-jump-next/org-table-jump-prev*, or by calling *org-table-set-jump-direction*.
 
-To change the jump condition, either use a C-u prefix arg with *org-table-jump-next/org-table-jump-prev* or 
-call *org-table-set-jump-condition*. You can also select the order in which cells are checked by using a double C-u
-prefix when calling *org-table-jump-next/org-table-jump-prev*, or by calling *org-table-set-jump-direction*.
-
-The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of how *org-table-jump* can be used to perform complex
-tasks such as solving maze puzzles.
+When defining your own jump condition you can make use of functions defined in *org-table-filter-function-bindings*. These functions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks such as solving mazes. The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of this.
 * Commands & keybindings
 
  Below is a complete list of commands:
