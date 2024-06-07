@@ -889,7 +889,7 @@ not used."
     ((getvar (key) (cdr (assoc key org-table-jump-state))) .
      "Get the value associated with KEY in `org-table-jump-state'.")
     ((setvar (key val) (setf (alist-get key org-table-jump-state) val) val) .
-     "Set the value associated with KEY in `org-table-jump-state' to VAL.")
+     "Set the value associated with KEY in `org-table-jump-state' to VAL, and return VAL.")
     ((checkvar (key &rest vals) (member (getvar key) vals)) .
      "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise."))
   "Function bindings (with descriptions) used by `org-table-jump-condition' & `org-dblock-write:tablefilter'.
@@ -1486,15 +1486,16 @@ CROW & CCOL should ALWAYS be the current row & column so they don't have to be r
 CROW & CCOL should ALWAYS be the current row & column so they don't have to be recalculated.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
   (let (field)
-    (org-table-goto-line (+ roffset crow))
-    (org-table-goto-column (+ coffset ccol))
-    (setq field (org-table-get-field))
-    (when (or noprompt
-	      (y-or-n-p (format "Change value in cell %d %s, and %d %s"
-				(abs roffset) (if (> roffset 0) "below" "above")
-				(abs coffset) (if (> coffset 0) "right" "left"))))
-      (org-table-blank-field)
-      (insert value))
+    (save-excursion
+      (org-table-goto-line (+ roffset crow))
+      (org-table-goto-column (+ coffset ccol))
+      (setq field (org-table-get-field))
+      (when (or noprompt
+		(y-or-n-p (format "Change value in cell %d %s, and %d %s"
+				  (abs roffset) (if (> roffset 0) "below" "above")
+				  (abs coffset) (if (> coffset 0) "right" "left"))))
+	(org-table-blank-field)
+	(insert value)))
     (org-table-goto-column ccol)))
 
 ;; simple-call-tree-info: CHECK  
@@ -1677,7 +1678,7 @@ In both these cases STEPS is set to 1."
 	 ;; (decrow (lambda (r) (1+ (mod (- r 2) numdlines))))
 	 ;; (deccol (lambda (c) (1+ (mod (- c 2) numcols))))
 
-	 ;; Make these functions take 2 args; currentline & currentcol which they update and return without moving?
+	 ;; Make these functions take 2 args; currentline & currentcol which they update and return with/without moving?
 	 (move-next-field (function (lambda nil
 				      (if (or (/= currentcol numcols)
 					      (/= currentline numdlines))
@@ -1727,7 +1728,7 @@ In both these cases STEPS is set to 1."
 				,(cdr org-table-jump-condition)))))
 	(funcall movefn)
 	(setq cellcount (1+ cellcount)
-	      currentcol (org-table-current-column)
+	      currentcol (org-table-current-column) ;TODO: currentcol & currentline should be updated by movefn
 	      currentline (org-table-current-line)))
       (incf matchcount))
     (if (not (org-at-table-p)) (goto-char startpos))
