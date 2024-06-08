@@ -869,11 +869,11 @@ not used."
     ((rowsum nil (-sum (mapcar 'string-to-number row))) .
      "Sum the numbers in all the columns of a row.")
     ((field (&optional roffset coffset)
-	    (s-trim (org-table-get-relative-field (or roffset 0) (or coffset 0) currentline currentcol))) .
-	    "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
-    ((matchfield (regex &optional roffset coffset)
-		 (org-table-match-relative-field regex (or roffset 0) (or coffset 0) currentline currentcol)) .
-		 "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
+	    (nth (+ (or coffset 0) (1- currentcol))
+		 (nth (nth (+ (or roffset 0) (1- currentline)) table-dlines) table)))
+     . "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
+    ((matchfield (regex &optional roffset coffset) (string-match regex (field roffset coffset)))
+     . "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
     ((setfield (value &optional roffset coffset noprompt)
 	       (org-table-set-relative-field value noprompt (or roffset 0) (or coffset 0) currentline currentcol)
 	       t)
@@ -1354,6 +1354,9 @@ otherwise you may end up changing more than you want.
 getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next'.
 You can also make use of the following variables:
 
+ table: the org-table as a list of lists (as returned by `org-table-to-lisp')
+ table-dlines: list of indices of data lines in table
+ table-hlines: list of indices of horizontal lines in table
  numdlines: the number of data lines in the table
  numhlines: the number of horizontal lines in the table
  numlines: numdlines + numhlines
@@ -1407,23 +1410,23 @@ You can also make use of the following variables:
 	      (not (org-table-goto-column numcols)))))
     ("---/cell" . (hline-p -1))
     ("cell/---" . (hline-p 1))
-    ("empty" . (matchfield "^\\s-+$"))
+    ("empty" . (matchfield "^\\s-*$"))
     ("non-empty" . (matchfield "\\S-"))
     ("empty/cell" .
      (and (not (hline-p -1))
-	  (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-+$") '((1 1) 1))))
+	  (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
     ("cell/empty" .
      (and (not (hline-p 1))
-	  (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-+$") '((1 1) 1))))
+	  (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
     ("empty|cell" . (and (matchfield "\\S-")
-			 (matchfield "^\\s-+$" 0 -1)))
+			 (matchfield "^\\s-*$" 0 -1)))
     ("cell|empty" . (and (matchfield "\\S-")
-			 (matchfield "^\\s-+$" 0 1)))
+			 (matchfield "^\\s-*$" 0 1)))
     ("every other" . (> cellcount 1))
-    ("replace empty" . (and (matchfield "^\\s-+$")
+    ("replace empty" . (and (matchfield "^\\s-*$")
 			    (setfield "-")))
     ("replace empty (no prompt)" .
-     (and (matchfield "^\\s-+$")
+     (and (matchfield "^\\s-*$")
 	  (setfield "-" 0 0 t)))
     ("enter manually" . enter)
     ("edit preset" . edit))
@@ -1710,9 +1713,8 @@ or if \"enter manually\" or \"edit preset\" is chosen then a new one edited in t
 and if more than one \\[universal-argument] prefix is used also prompt for MOVEDIR. 
 In both these cases STEPS is set to 1."
   (interactive "p")
-  (let ((doprompt (and (called-interactively-p 'any)
-		       (listp current-prefix-arg)
-		       (not (null current-prefix-arg)))))
+  (let ((doprompt (and (not (null current-prefix-arg))
+		       (listp current-prefix-arg))))
     (if stopcond
 	(org-table-set-jump-condition stopcond)
       (if doprompt
@@ -1804,6 +1806,10 @@ In both these cases STEPS is set to 1."
 STOPCOND & MOVEDIR args are same as for `org-table-jump-next'."
   (interactive "p")
   (org-table-jump-next (- steps) stopcond movedir))
+
+;; IDEAS:
+;; - jump sequences; list of jump types which are traversed in sequence, and can include individual cell references
+;; - table specific jump sequences; stored in table header and loaded automatically by new command `org-table-jump-default'
 
 (provide 'org-table-jb-extras)
 
