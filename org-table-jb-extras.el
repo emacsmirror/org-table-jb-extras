@@ -1712,8 +1712,7 @@ In both these cases STEPS is set to 1."
   (interactive "p")
   (let ((doprompt (and (called-interactively-p 'any)
 		       (listp current-prefix-arg)
-		       (not (null current-prefix-arg))))
-	table)
+		       (not (null current-prefix-arg)))))
     (if stopcond
 	(org-table-set-jump-condition stopcond)
       (if doprompt
@@ -1724,10 +1723,11 @@ In both these cases STEPS is set to 1."
 	  (call-interactively 'org-table-set-jump-direction)))
     (when doprompt (setq steps 1) (org-table-show-jump-condition)))
   (unless (org-at-table-p) (error "Point is not in an org-table"))
-  (setq table (org-table-to-lisp))
-  (let* ((numlines (length table))
+  (let* ((table (org-table-to-lisp))
+	 (numlines (length table))
 	 (numhlines (-count 'symbolp table))
 	 (numdlines (- numlines numhlines))
+	 (table-hlines)
 	 (numcols (length (-first 'listp table)))
 	 (numcells (* numdlines numcols))
 	 (startcol (org-table-current-column))
