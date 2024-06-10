@@ -517,7 +517,9 @@ Return value is the sum of lengths of the text in the newly combined fields."
 
 ;;;###autoload
 ;; simple-call-tree-info: STARTED  
-(defcustom org-table-dispatch-actions '(("copy cells in region to org-table-clip" . org-table-copy-region)
+(defcustom org-table-dispatch-actions '(("browse tables" . (lambda nil (occur "#\\+\\(TBL\\|tbl\\)\\(NAME\\|name\\):")
+							     (pop-to-buffer "*Occur*")))
+					("copy cells in region to org-table-clip" . org-table-copy-region)
 					("cut cells in region to org-table-clip" . org-table-cut-region)
 					("paste copied cells from org-table-clip" . org-table-paste-rectangle)
 					("copy table to kill ring" . (lambda (lst) (kill-new (org-table-lisp-to-string lst))))
