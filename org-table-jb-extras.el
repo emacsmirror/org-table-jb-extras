@@ -1006,7 +1006,7 @@ The name of a table is determined by a #+NAME or #+TBLNAME line before the table
           (re-search-forward "^|")
           (beginning-of-line)
           (if aslisp (org-table-to-lisp)
-            (buffer-substring (point) (marker-position (org-table-end)))))))))
+            (buffer-substring (point) (org-table-end))))))))
 
 ;; simple-call-tree-info: DONE  
 (defun org-table-ncols (tbl)
@@ -1782,7 +1782,8 @@ STOPCOND & MOVEDIR args are same as for `org-table-jump-next'."
 ;; IDEAS:
 ;; - jump sequences; list of jump types which are traversed in sequence, and can include individual cell references
 ;; - table specific jump sequences; stored in table header and loaded automatically by new command `org-table-jump-default'
-;;    different conditions/sequences for different prefix keys
+;;    different conditions/sequences for different prefix keys.
+;;    Have an option in org-table-set-jump-condition which selects the table specific jump condition.
 
 (provide 'org-table-jb-extras)
 
