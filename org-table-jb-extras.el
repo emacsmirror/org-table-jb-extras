@@ -517,9 +517,7 @@ Return value is the sum of lengths of the text in the newly combined fields."
 
 ;;;###autoload
 ;; simple-call-tree-info: STARTED  
-(defcustom org-table-dispatch-actions '(("browse tables" . (lambda nil (occur "#\\+\\(TBL\\|tbl\\)\\(NAME\\|name\\):")
-							     (pop-to-buffer "*Occur*")))
-					("copy cells in region to org-table-clip" . org-table-copy-region)
+(defcustom org-table-dispatch-actions '(("copy cells in region to org-table-clip" . org-table-copy-region)
 					("cut cells in region to org-table-clip" . org-table-cut-region)
 					("paste copied cells from org-table-clip" . org-table-paste-rectangle)
 					("copy table to kill ring" . (lambda (lst) (kill-new (org-table-lisp-to-string lst))))
@@ -1780,6 +1778,16 @@ In both these cases STEPS is set to 1."
 STOPCOND & MOVEDIR args are same as for `org-table-jump-next'."
   (interactive "p")
   (org-table-jump-next (- steps) stopcond movedir))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-browse-tables (&optional namedp)
+  "Browse tables in the current buffer using `occur'.
+If NAMEDP is non-nil only list named tables."
+  (interactive "P")
+  (occur (if namedp "\\+\\(TBL\\|tbl\\)\\(NAME\\|name\\):"
+	   "^\\s-*[^|].*\n\\s-*|.*"))
+  (pop-to-buffer "*Occur*"))
+
 
 ;; IDEAS:
 ;; - jump sequences; list of jump types which are traversed in sequence, and can include individual cell references
