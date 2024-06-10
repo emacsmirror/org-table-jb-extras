@@ -1385,29 +1385,35 @@ You can also make use of the following variables:
      (or (and (not (checkvar 'firstlast 'first))
 	      (setvar 'firstlast 'first)
 	      (org-table-goto-line 1)
-	      (not (org-table-goto-column 1)))
+	      (not (org-table-goto-column 1))
+	      (setq currentline 1 currentcol 1))
 	 (and (checkvar 'firstlast 'first)
 	      (setvar 'firstlast 'last)
 	      (org-table-goto-line numdlines)
-	      (not (org-table-goto-column numcols)))))
+	      (not (org-table-goto-column numcols))
+	      (setq currentline numdlines currentcol numcols))))
     ("1st<>last row" .
      (or (and (not (checkvar 'firstlast 'first))
 	      (setvar 'firstlast 'first)
 	      (org-table-goto-line 1)
-	      (not (org-table-goto-column startcol)))
+	      (not (org-table-goto-column startcol))
+	      (setq currentline 1 currentcol startcol))
 	 (and (checkvar 'firstlast 'first)
 	      (setvar 'firstlast 'last)
 	      (org-table-goto-line numdlines)
-	      (not (org-table-goto-column startcol)))))
+	      (not (org-table-goto-column startcol))
+	      (setq currentline numdlines currentcol startcol))))
     ("1st<>last col" .
      (or (and (not (checkvar 'firstlast 'first))
 	      (setvar 'firstlast 'first)
 	      (org-table-goto-line startline)
-	      (not (org-table-goto-column 1)))
+	      (not (org-table-goto-column 1))
+	      (setq currentline startline currentcol 1))
 	 (and (checkvar 'firstlast 'first)
 	      (setvar 'firstlast 'last)
 	      (org-table-goto-line startline)
-	      (not (org-table-goto-column numcols)))))
+	      (not (org-table-goto-column numcols))
+	      (setq currentline startline currentcol numcols))))
     ("---/cell" . (hline-p -1))
     ("cell/---" . (hline-p 1))
     ("empty" . (matchfield "^\\s-*$"))
@@ -1791,9 +1797,10 @@ If NAMEDP is non-nil only list named tables."
 
 ;; IDEAS:
 ;; - jump sequences; list of jump types which are traversed in sequence, and can include individual cell references
-;; - table specific jump sequences; stored in table header and loaded automatically by new command `org-table-jump-default'
+;; - table specific jump sequences; stored in #+TBLJMP: footer and loaded automatically by new command `org-table-jump-default'
 ;;    different conditions/sequences for different prefix keys.
-;;    Have an option in org-table-set-jump-condition which selects the table specific jump condition.
+;;    Have an option in org-table-set-jump-condition which selects the table specific jump condition, and a command to save
+;;    the current jump condition/sequence to the #+TBLJMP footer.
 
 (provide 'org-table-jb-extras)
 
