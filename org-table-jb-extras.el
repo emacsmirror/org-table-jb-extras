@@ -1400,27 +1400,9 @@ e.g: (gotocell (1- numlines) (1- numcols)).")
 
 ;; simple-call-tree-info: CHECK
 (defcustom org-table-jump-condition-presets
-  '(("1st<>last cell" . 
-     (or (and (not (checkvar 'firstlast 'first))
-	      (setvar 'firstlast 'first)
-	      (gotocell 1 1))
-	 (and (checkvar 'firstlast 'first)
-	      (setvar 'firstlast 'last)
-	      (gotocell numdlines numcols))))
-    ("1st<>last row" .
-     (or (and (not (checkvar 'firstlast 'first))
-	      (setvar 'firstlast 'first)
-	      (gotocell 1))
-	 (and (checkvar 'firstlast 'first)
-	      (setvar 'firstlast 'last)
-	      (gotocell numdlines))))
-    ("1st<>last col" .
-     (or (and (not (checkvar 'firstlast 'first))
-	      (setvar 'firstlast 'first)
-	      (gotocell nil 1))
-	 (and (checkvar 'firstlast 'first)
-	      (setvar 'firstlast 'last)
-	      (gotocell nil numcols))))
+  '(("1st<>last cell" . (jmpseq (1 . 1) (numlines . numcols)))
+    ("1st<>last row" . (jmpseq (1 . startcol) (numlines . startcol)))
+    ("1st<>last col" . (jmpseq (startline . 1) (startline . numcols)))
     ("---/cell" . (hline-p -1))
     ("cell/---" . (hline-p 1))
     ("empty" . (matchfield "^\\s-*$"))
