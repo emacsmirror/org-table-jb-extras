@@ -545,7 +545,7 @@ Return value is the sum of lengths of the text in the newly combined fields."
 					("Fill empty cells" . org-table-fill-empty-cells)
 					("Move current cell" . org-table-move-cell)
 					("Set jump condition" . org-table-set-jump-condition)
-					("Show table dimensions" . org-table-query-dimension))
+					("Show table dimensions/info" . org-table-query-dimension))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
@@ -1382,10 +1382,14 @@ You can also make use of the following variables:
 
 As mentioned previously instead of a single sexp you may also use a regexp to match the contents of a cell,
 or a cons cell containing the line & column number to jump to, or a list whose first element is the symbol 'jmpseq, 
-and whose subsequent elements are sexps or regexps.
+and whose subsequent elements are sexps or regexps. 
 For example: '(jmpseq \"foo\" '(4 . 5) \"bar\") will first jump to the next cell containing \"foo\", then 
 the one in line 4 & column 5, then the next one containing \"bar\", and then the next one containing \"foo\",
-etc.")
+etc.
+If a cons cell is used to jump to a specific cell, the car may be another sexp that evaluates to the required
+line number, but the cdr must be either a number or symbol, for example '((1- numlines) . numcols).
+If the required column number needs to be calculated you can use the gotocell function instead, 
+e.g: (gotocell (1- numlines) (1- numcols)).")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
@@ -1789,8 +1793,7 @@ In both these cases STEPS is set to 1."
 				   (if (stringp jmpcond)
 				       (list 'matchfield jmpcond)
 				     (if (and (consp jmpcond)
-					      (numberp (car jmpcond))
-					      (numberp (cdr jmpcond)))
+					      (not (listp (cdr jmpcond))))
 					 (list 'gotocell (car jmpcond) (cdr jmpcond))
 				       jmpcond)))))
 		 (incf cellcount)
