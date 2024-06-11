@@ -1334,9 +1334,10 @@ The car should be a symbol to specify the direction of traversal across the org-
  'up/'down specify moving up/down the current column & stopping at the top/bottom,
  'left/'right specify moving across previous/next cells and stopping at the first/last cell.
 The cdr should be an sexp that evaluates to true when the desired cell has been reached,
-or a regexp for matching the contents of the desired cell, or a list containing the symbol
-`jmpseq' followed by a sequence of such sexp's which will be traverse as `org-table-jump-next' 
-is called sequentially (see below).
+or a regexp for matching the contents of the desired cell, or a cons cell containing the
+line & column number to jump to, or a list containing the symbol `jmpseq' followed by a sequence 
+of such sexp's/regexp's/cons cells which will be traverse as `org-table-jump-next' is called 
+sequentially (see below).
 Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
  (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'.
@@ -1358,7 +1359,8 @@ Each sexp can make use of the functions defined in `org-table-filter-function-bi
 
 Be careful with the setfield, replace-in-field, changenum & flatten functions, only use them if your other jump conditions 
 are satisfied otherwise you may end up changing more than you want.
-getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next'.
+getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next', which can be
+used for creating more complex jump patterns.
 You can also make use of the following variables:
 
  table: the org-table as a list of lists (as returned by `org-table-to-lisp')
@@ -1376,13 +1378,14 @@ You can also make use of the following variables:
  numcells: the total number of cells in the table
  cellcount: the number of fields traversed since the last match
  startpos: the position of point before starting
- prefixarg: the prefix arg converted to a number 
-  (this could be useful for performing different jumps for different prefix args).
+ prefixarg: the prefix arg converted to a number (for performing different jumps for different prefix args).
 
 As mentioned previously instead of a single sexp you may also use a regexp to match the contents of a cell,
-or a list whose first element is the symbol 'jmpseq, and whose subsequent elements are sexps or regexps.
-For example: '(jmpseq \"foo\" \"bar\" \"choo\") will first jump to the next cell containing \"foo\", then one 
-containing \"bar\", then one containing \"choo\", then it will go back to matching \"foo\" again.")
+or a cons cell containing the line & column number to jump to, or a list whose first element is the symbol 'jmpseq, 
+and whose subsequent elements are sexps or regexps.
+For example: '(jmpseq \"foo\" '(4 . 5) \"bar\") will first jump to the next cell containing \"foo\", then 
+the one in line 4 & column 5, then the next one containing \"bar\", and then the next one containing \"foo\",
+etc.")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
@@ -1788,7 +1791,7 @@ In both these cases STEPS is set to 1."
 				     (if (and (consp jmpcond)
 					      (numberp (car jmpcond))
 					      (numberp (cdr jmpcond)))
-					 t ;TODO
+					 (list 'gotocell (car jmpcond) (cdr jmpcond))
 				       jmpcond)))))
 		 (incf cellcount)
 		 (funcall movefn cellcount))
