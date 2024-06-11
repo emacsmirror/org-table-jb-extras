@@ -1348,8 +1348,8 @@ It can make use of the functions defined in `org-table-filter-function-bindings'
  (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
 
-Be careful with the setfield, replace-in-field & changenum functions, only use them if your other jump conditions are satisfied
-otherwise you may end up changing more than you want.
+Be careful with the setfield, replace-in-field, changenum & flatten functions, only use them if your other jump conditions 
+are satisfied otherwise you may end up changing more than you want.
 getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next'.
 You can also make use of the following variables:
 
@@ -1369,7 +1369,10 @@ You can also make use of the following variables:
  cellcount: the number of fields traversed since the last match
  startpos: the position of point before starting
  prefixarg: the prefix arg converted to a number 
-  (this could be useful for performing different jumps for different prefix args).")
+  (this could be useful for performing different jumps for different prefix args).
+
+Instead of an sexp you may also use a single string, say STR, which will be replaced with (matchfield STR),
+i.e. the string will be treated as a regexp to match against the fields.")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
