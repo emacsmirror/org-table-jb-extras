@@ -915,7 +915,11 @@ not used."
 	     (setf (alist-get key org-table-jump-state) val) val) .
 	     "Set the value associated with KEY in `org-table-jump-state' to VAL, and return VAL.")
     ((checkvar (key &rest vals) (member (getvar key) vals)) .
-     "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise."))
+     "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.")
+    ((gotocell (line &optional col) (org-table-goto-line (or line startline))
+	       (org-table-goto-column (or col startcol))
+	       (setq currentline (or line startline) currentcol (or col startcol)))
+     . "Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column."))
   "Function bindings (with descriptions) used by `org-table-jump-condition' & `org-dblock-write:tablefilter'.
 These function bindings can be used in the cdr of `org-table-jump-condition', or the :filter parameter of
 a tablefilter dynamic block. For :filter parameters the functions are created after the default row & column
@@ -1350,6 +1354,7 @@ Each sexp can make use of the functions defined in `org-table-filter-function-bi
  (getvar KEY): get the value associated with KEY in `org-table-jump-state'.
  (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
+ (gotocell LINE COL): Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
 
 Be careful with the setfield, replace-in-field, changenum & flatten functions, only use them if your other jump conditions 
 are satisfied otherwise you may end up changing more than you want.
@@ -1391,36 +1396,24 @@ containing \"bar\", then one containing \"choo\", then it will go back to matchi
   '(("1st<>last cell" . 
      (or (and (not (checkvar 'firstlast 'first))
 	      (setvar 'firstlast 'first)
-	      (org-table-goto-line 1)
-	      (not (org-table-goto-column 1))
-	      (setq currentline 1 currentcol 1))
+	      (gotocell 1 1))
 	 (and (checkvar 'firstlast 'first)
 	      (setvar 'firstlast 'last)
-	      (org-table-goto-line numdlines)
-	      (not (org-table-goto-column numcols))
-	      (setq currentline numdlines currentcol numcols))))
+	      (gotocell numdlines numcols))))
     ("1st<>last row" .
      (or (and (not (checkvar 'firstlast 'first))
 	      (setvar 'firstlast 'first)
-	      (org-table-goto-line 1)
-	      (not (org-table-goto-column startcol))
-	      (setq currentline 1 currentcol startcol))
+	      (gotocell 1))
 	 (and (checkvar 'firstlast 'first)
 	      (setvar 'firstlast 'last)
-	      (org-table-goto-line numdlines)
-	      (not (org-table-goto-column startcol))
-	      (setq currentline numdlines currentcol startcol))))
+	      (gotocell numdlines))))
     ("1st<>last col" .
      (or (and (not (checkvar 'firstlast 'first))
 	      (setvar 'firstlast 'first)
-	      (org-table-goto-line startline)
-	      (not (org-table-goto-column 1))
-	      (setq currentline startline currentcol 1))
+	      (gotocell nil 1))
 	 (and (checkvar 'firstlast 'first)
 	      (setvar 'firstlast 'last)
-	      (org-table-goto-line startline)
-	      (not (org-table-goto-column numcols))
-	      (setq currentline startline currentcol numcols))))
+	      (gotocell nil numcols))))
     ("---/cell" . (hline-p -1))
     ("cell/---" . (hline-p 1))
     ("empty" . (matchfield "^\\s-*$"))
