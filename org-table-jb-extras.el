@@ -1329,8 +1329,11 @@ The cell will swap places with the one in the direction chosen."
 The car should be a symbol to specify the direction of traversal across the org-table:
  'up/'down specify moving up/down the current column & stopping at the top/bottom,
  'left/'right specify moving across previous/next cells and stopping at the first/last cell.
-The cdr should be an sexp that evaluates to true when the desired cell has been reached.
-It can make use of the functions defined in `org-table-filter-function-bindings' which include:
+The cdr should be an sexp that evaluates to true when the desired cell has been reached,
+or a regexp for matching the contents of the desired cell, or a list containing the symbol
+`jmpseq' followed by a sequence of such sexp's which will be traverse as `org-table-jump-next' 
+is called sequentially (see below).
+Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
  (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'.
  (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'.
@@ -1371,8 +1374,10 @@ You can also make use of the following variables:
  prefixarg: the prefix arg converted to a number 
   (this could be useful for performing different jumps for different prefix args).
 
-Instead of an sexp you may also use a single string, say STR, which will be replaced with (matchfield STR),
-i.e. the string will be treated as a regexp to match against the fields.")
+As mentioned previously instead of a single sexp you may also use a regexp to match the contents of a cell,
+or a list whose first element is the symbol 'jmpseq, and whose subsequent elements are sexps or regexps.
+For example: '(jmpseq \"foo\" \"bar\" \"choo\") will first jump to the next cell containing \"foo\", then one 
+containing \"bar\", then one containing \"choo\", then it will go back to matching \"foo\" again.")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
