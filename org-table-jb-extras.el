@@ -130,7 +130,6 @@
 (require 'cl-lib)
 (require 'ido-choose-function)
 (require 'dash)
-(require 'anaphora)
 (require 's)
 (require 'ampl-mode nil t) ;; my version which contains `run-ampl-async'
 ;;; Code:
@@ -1155,12 +1154,12 @@ value it will be made the first column.
 If the PADDING arg is supplied it should be a string to use for padding extra cells (see `org-table-rbind')."
   (let* ((tables (cl-mapcar 'org-table-fetch tblnames (make-list (length tblnames) t)))
          (newtbl (org-table-rbind tables padding)))
-    (aif namescol
+    (if namescol
         (let ((newcol (loop for tbl in tables
                             for name in tblnames
                             for lst = (make-list (org-table-nrows tbl) (list name))
                             nconc lst)))
-          (if (org-table-equal it 'last)
+          (if (org-table-equal namescol 'last)
               (org-table-cbind (list newtbl newcol))
             (org-table-cbind (list newcol newtbl))))
       newtbl)))
@@ -1770,7 +1769,20 @@ In both these cases STEPS is set to 1."
 	       (setq cellcount 1)
 	       (funcall movefn cellcount)
 	       (while (and (< cellcount numcells)
-			   (not ,(cdr org-table-jump-condition)))
+			   (not ,(let ((jmpcond
+					(let ((jmplst (cdr org-table-jump-condition))
+					      (jmpidx (cdr (assoc 'jmpidx org-table-jump-state))))
+					  (if (eq (car jmplst) 'jmpseq)
+					      (prog1 (nth (1+ (mod (or jmpidx 0)
+								   (1- (length jmplst))))
+							  jmplst)
+						(setf (alist-get 'jmpidx org-table-jump-state)
+						      (mod (1+ jmpidx) (1- (length jmplst)))))
+					    (setf (alist-get 'jmpidx org-table-jump-state) 0)
+					    jmplst))))
+				   (if (stringp jmpcond)
+				       (list 'matchfield jmpcond)
+				     jmpcond))))
 		 (incf cellcount)
 		 (funcall movefn cellcount))
 	       (incf matchcount))))
