@@ -14,6 +14,9 @@ To find a solution automatically using *org-table-jump*;
 
 This will then move the cursor around the maze as it tries to find a solution. When it has found one it will be printed underneath. This solution is not guaranteed to be optimal since it just uses a basic depth first search algorithm, and stops at the first solution found. However you can try different search directions, which can result in different solutions, by setting the first argument to *org-table-solve-mazelog* on the "src_elisp" line to one of; 'up, 'down, 'left, or 'right. You can also alter the amount of time that the cursor waits between jumps by setting the second argument (by default it's 0.1 seconds).
 
+TODO: this code could be simplified by making use of newly added features to org-table-jump.
+      Pushing/popping from the path variable is reminiscent of https://xorvoid.com/forsp.html, hmmm...
+
 #+NAME: depth-first-search-solver
 #+BEGIN_SRC emacs-lisp :results none
   (defun org-table-solve-mazelog (&optional direction pause)

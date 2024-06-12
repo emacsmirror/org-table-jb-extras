@@ -873,12 +873,12 @@ not used."
      . "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((matchfield (regex &optional roffset coffset) (string-match regex (field roffset coffset)))
      . "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
-    ((setfield (value &optional roffset coffset noprompt)
+    ((setfield (value &optional roffset coffset noprompt) ;TODO need to also change lisp table
 	       (org-table-set-relative-field value noprompt (or roffset 0) (or coffset 0) currentline currentcol)
 	       t)
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
-		       (org-table-set-relative-field
+		       (org-table-set-relative-field ;TODO use setfield here
 			(replace-regexp-in-string regexp rep (field roffset coffset))
 			noprompt (or roffset 0) (or coffset 0) currentline currentcol)
 		       t)
@@ -898,8 +898,8 @@ not used."
 		      (org-table-align))))
      . "Convert date in relative field to different format")
     ((flatten (&optional nrows ncols func reps) (org-table-jump-flatten-cells nrows ncols func reps)) .
-     "See `org-table-flatten-columns'.")
-    ((hline-p (roffset) (org-table-relative-hline-p roffset)) .
+     "See `org-table-flatten-columns'.") ;TODO; check this works at currentline & currentcol
+    ((hline-p (roffset) (seq-contains table-hlines (+ (1- currentline) roffset))) .
      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
     ((countcells (dir roffset coffset &rest regexs)
 		 (apply 'org-table-count-matching-fields dir roffset coffset currentline currentcol regexs)) .
@@ -1330,32 +1330,57 @@ The cell will swap places with the one in the direction chosen."
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition (cons 'right t)
   "Cons cell used by `org-table-jump-next' to determine next cell to jump to.
-The car should be a symbol to specify the direction of traversal across the org-table:
- 'up/'down specify moving up/down the current column & stopping at the top/bottom,
- 'left/'right specify moving across previous/next cells and stopping at the first/last cell.
-The cdr should be an sexp that evaluates to true when the desired cell has been reached,
-or a regexp for matching the contents of the desired cell, or a cons cell containing the
-line & column number to jump to, or a list containing the symbol `jmpseq' followed by a sequence 
-of such sexp's/regexp's/cons cells which will be traverse as `org-table-jump-next' is called 
-sequentially (see below).
-Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which include:
 
- (field &optional ROFFSET COFFSET): a wrapper around `org-table-get-relative-field'.
- (matchfield REGEX &optional ROFFSET COFFSET): a wrapper around `org-table-match-relative-field'.
- (setfield VALUE &optional ROFFSET COFFSET NOPROMPT): a wrapper around `org-table-set-relative-field',
- (replace-in-field REGEXP REP &optional ROFFSET COFFSET): replace matches to REGEXP with REP in field 
+The car should be a symbol to specify the direction of traversal across the org-table:
+  - up/down : move up/down the current column & then to the next column on the left/right
+  - left/right move left/right across the current row & then to the next row up/down.
+
+The cdr can be either:
+
+ - 1) A keyword matching an element of `org-table-jump-condition-presets', e.g. :empty
+      (called a \"keyword condition\" in the following text).
+ - 2) A regexp for matching the contents of the desired cell, e.g. \"foo\".
+ - 3) A list containing a regexp followed by one or two numbers indicating the row & column
+      offset (relative to the current cell) of the cell to match the regexp against, e.g.
+      (\"foo\" 1 1) = cell 1 row above and 1 column to the left of a cell containing \"foo\"
+ - 4) A cons cell containing the line & column number to jump to. The car may be any expression
+      that evaluates to a number, and the cdr may be a number or symbol that evaluates to a number;
+      e.g. (1 . 1) = top-left cell, ((1- numdlines) . numcols) = cell above bottom-right cell
+      (note: you can also use the gotocell function described below).
+ - 5) An sexp that evaluates to non-nil when the desired cell has been reached; this sexp may contain
+      previously mentioned keyword conditions (which will be replaced by their corresponding forms)
+      and any of the functions and variables listed below,
+      e.g: (and :empty (matchfield \"bar\" 1 0)) = empty cell above a cell containing \"bar\"
+ - 6) A list whose first element is either & or | to indicate the logical conjunction/disjunction of
+      the subsequent elements. The subsequent elements may include any of the previously mentioned forms
+      (keyword condition, regexp, cons cell, sexp) or recursive calls to &/|. For example:
+      (& :empty (\"bar\" 1)) = empty cell above cell containing \"bar\"
+      (| (& :empty \"bar\" 1) (& :nonempty (\"foo\" 0 -1)) (numdlines . numcols)) = same as previous match,
+      but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
+ - 7) A list containing the symbol `jmpseq' followed by a sequence of any of the previously mentioned items.
+      Each call to `org-table-jump-next' will jump to the next item in this sequence. For example:
+      (jmpseq (& :empty \"bar\" 1) (& :nonempty \"foo\" 0 -1) (numdlines . numcols)) = first jump to the next
+      empty cell above one containing \"bar\", then jump to the next non-empty cell to the right of one
+      containing \"foo\", then jump to the last cell, and repeat.
+
+Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which by default includes:
+
+ (field &optional ROFFSET COFFSET) = a wrapper around `org-table-get-relative-field'.
+ (matchfield REGEX &optional ROFFSET COFFSET) = a wrapper around `org-table-match-relative-field'.
+ (setfield VALUE &optional ROFFSET COFFSET NOPROMPT) = a wrapper around `org-table-set-relative-field',
+ (replace-in-field REGEXP REP &optional ROFFSET COFFSET) = replace matches to REGEXP with REP in field
     in row (current row + ROFFSET) & column (current column + COFFSET).
- (field2num &optional ROFFSET COFFSET): read a field as a number and return it.
- (changenumber FUNC &optional roffset coffset noprompt): apply FUNC to number in field and replace field with result.
- (flatten NROWS NCOLS FUNC REPS): a wrapper around `org-table-flatten-columns'.
- (hline-p ROFFSET): a wrapper around `org-table-relative-hline-p'.
- (countcells DIR ROFFSET COFFSET &rest REGEXS): a wrapper around `org-table-count-matching-fields'.
- (checkcounts COUNTS BOUNDS): a wrapper around `org-table-check-bounds'.
- (sumcounts DIR ROFFSET COFFSET &rest REGEXS): similar to countcells but returns total No. of matches.
- (getvar KEY): get the value associated with KEY in `org-table-jump-state'.
- (setvar KEY VAL): set the value associated with KEY in `org-table-jump-state' to VAL.
- (checkvar KEY &rest VALS): return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
- (gotocell LINE COL): Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
+ (field2num &optional ROFFSET COFFSET) = read a field as a number and return it.
+ (changenumber FUNC &optional roffset coffset noprompt) = apply FUNC to number in field and replace field with result.
+ (flatten NROWS NCOLS FUNC REPS) = a wrapper around `org-table-flatten-columns'.
+ (hline-p ROFFSET) = a wrapper around `org-table-relative-hline-p'.
+ (countcells DIR ROFFSET COFFSET &rest REGEXS) = a wrapper around `org-table-count-matching-fields'.
+ (checkcounts COUNTS BOUNDS) = a wrapper around `org-table-check-bounds'.
+ (sumcounts DIR ROFFSET COFFSET &rest REGEXS) = similar to countcells but returns total No. of matches.
+ (getvar KEY) = get the value associated with KEY in `org-table-jump-state'.
+ (setvar KEY VAL) = set the value associated with KEY in `org-table-jump-state' to VAL.
+ (checkvar KEY &rest VALS) = return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
+ (gotocell LINE COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
 
 Be careful with the setfield, replace-in-field, changenum & flatten functions, only use them if your other jump conditions 
 are satisfied otherwise you may end up changing more than you want.
@@ -1363,33 +1388,21 @@ getvar, setvar & checkvar are used for communicating state across invocations of
 used for creating more complex jump patterns.
 You can also make use of the following variables:
 
- table: the org-table as a list of lists (as returned by `org-table-to-lisp')
- table-dlines: list of indices of data lines in table
- table-hlines: list of indices of horizontal lines in table
- numdlines: the number of data lines in the table
- numhlines: the number of horizontal lines in the table
- numlines: numdlines + numhlines
- numcols: the number of columns
- currentcol: the current column number
- currentline: the current data line number (i.e. excluding horizontal lines)
- startcol: the column that point was in at the start
- startline: the data line number that point was in at the start
- movedir: the current direction of field traversal ('up,'down,'left or 'right)
- numcells: the total number of cells in the table
- cellcount: the number of fields traversed since the last match
- startpos: the position of point before starting
- prefixarg: the prefix arg converted to a number (for performing different jumps for different prefix args).
-
-As mentioned previously instead of a single sexp you may also use a regexp to match the contents of a cell,
-or a cons cell containing the line & column number to jump to, or a list whose first element is the symbol 'jmpseq, 
-and whose subsequent elements are sexps or regexps. 
-For example: '(jmpseq \"foo\" '(4 . 5) \"bar\") will first jump to the next cell containing \"foo\", then 
-the one in line 4 & column 5, then the next one containing \"bar\", and then the next one containing \"foo\",
-etc.
-If a cons cell is used to jump to a specific cell, the car may be another sexp that evaluates to the required
-line number, but the cdr must be either a number or symbol, for example '((1- numlines) . numcols).
-If the required column number needs to be calculated you can use the gotocell function instead, 
-e.g: (gotocell (1- numlines) (1- numcols)).")
+ table = the org-table as a list of lists (as returned by `org-table-to-lisp')
+ table-dlines = list of indices of data lines in table
+ table-hlines = list of indices of horizontal lines in table
+ numdlines = the number of data lines in the table
+ numhlines = the number of horizontal lines in the table
+ numlines = numdlines + numhlines
+ numcols = the number of columns
+ currentcol = the current column number
+ currentline = the current data line number (i.e. excluding horizontal lines)
+ startcol = the column that point was in at the start
+ startline = the data line number that point was in at the start
+ movedir = the current direction of field traversal ('up,'down,'left or 'right)
+ numcells = the total number of cells in the table
+ cellcount = the number of cells checked since the last match
+ startpos = the position of point before starting.")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
@@ -1400,22 +1413,22 @@ e.g: (gotocell (1- numlines) (1- numcols)).")
 
 ;; simple-call-tree-info: CHECK
 (defcustom org-table-jump-condition-presets
-  '(("1st<>last cell" . (jmpseq (1 . 1) (numlines . numcols)))
-    ("1st<>last row" . (jmpseq (1 . startcol) (numlines . startcol)))
-    ("1st<>last col" . (jmpseq (startline . 1) (startline . numcols)))
-    ("---/cell" . (hline-p -1))
-    ("cell/---" . (hline-p 1))
-    ("empty" . (matchfield "^\\s-*$"))
-    ("non-empty" . (matchfield "\\S-"))
-    ("empty/cell" .
-     (and (not (hline-p -1))
-	  (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
-    ("cell/empty" .
-     (and (not (hline-p 1))
-	  (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
-    ("empty|cell" . (and (matchfield "\\S-")
-			 (matchfield "^\\s-*$" 0 -1)))
-    ("cell|empty" . (and (matchfield "\\S-")
+  '(("1st<>last cell" . (jmpseq :first :last))
+    ("1st<>last row" . (jmpseq :top :bottom))
+    ("1st<>last col" . (jmpseq :left :right))
+    (:first . (gotocell 1 1))
+    (:last . (gotocell numdlines numcols))
+    (:hline-above . (hline-p -1))
+    (:hline-below . (hline-p 1))
+    (:empty . (matchfield "^\\s-*$"))
+    (:nonempty . (matchfield "\\S-"))
+    (:empty-above . (and (not (hline-p -1))
+			 (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
+    (:empty-below . (and (not (hline-p 1))
+			 (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
+    (:empty-left . (and (matchfield "\\S-")
+			(matchfield "^\\s-*$" 0 -1)))
+    (:empty-right . (and (matchfield "\\S-")
 			 (matchfield "^\\s-*$" 0 1)))
     ("every other" . (> cellcount 1))
     ("replace empty" . (and (matchfield "^\\s-*$")
@@ -1426,8 +1439,10 @@ e.g: (gotocell (1- numlines) (1- numcols)).")
     ("enter manually" . enter)
     ("edit preset" . edit))
   "Named presets for `org-table-jump-condition'.
-Each element is a cons cell (DESCRIPTION . SEXP) containing a description of the condition
-evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
+Each element is a cons cell (KEY . SEXP) where KEY is either a keyword or a string description of the
+condition evaluated by SEXP. If it is a keyword then it may also be used instead of the corresponding
+ SEXP in `org-table-jump-condition' (either bare or within another sexp).
+The SEXP may make use of functions defined in `org-table-filter-function-bindings'."
   :group 'org-table
   :type '(alist :key-type (string :tag "Description")
 		:value-type (sexp :tag "Condition")))
@@ -1435,8 +1450,11 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 ;; simple-call-tree-info: DONE this is used in `one-key-regs-custom-register-types'
 (defun org-table-describe-jump-condition (condition maxchars)
   "Return a string containing a description of jump CONDITION of length at most MAXCHARS."
-  (let ((str (or (car (rassoc condition org-table-jump-condition-presets))
-		 (format "%s" condition))))
+  (let* ((name (or (car (rassoc condition org-table-jump-condition-presets))
+		   (format "%s" condition)))
+	 (str (if (keywordp name)
+		  (substring (symbol-name name) 1)
+		name)))
     (substring str 0 (min maxchars (length str)))))
 
 (defun org-table-show-jump-condition nil
@@ -1453,16 +1471,19 @@ evaluated by SEXP. The SEXP may make use of functions defined in `org-table-filt
 ;; simple-call-tree-info: TODO make selection using one-key instead of completing-read?
 (defun org-table-set-jump-condition (condition)
   "Set the CONDITION for `org-table-jump-condition'.
-If CONDITION is a string select the corresponding condition from `org-table-jump-condition-presets'.
+If CONDITION is a string or keyword select the corresponding condition from `org-table-jump-condition-presets'.
 When called interactively prompt the user to select from `org-table-jump-condition-presets'.
 If the user chooses \"enter manually\" then they are prompted to enter an sexp, and if they
 choose \"edit preset\" then they are prompted to choose an existing condition and edit it
 in the minibuffer."
-  (interactive (let ((condition (cdr (assoc (and org-table-jump-condition-presets
-						 (completing-read
-						  (substitute-command-keys "Set jump condition for \\[org-table-jump-next]: ")
-						  org-table-jump-condition-presets))
-					    org-table-jump-condition-presets))))
+  (interactive (let* ((name (and org-table-jump-condition-presets
+				 (completing-read
+				  (substitute-command-keys
+				   "Set jump condition for \\[org-table-jump-next]: ")
+				  org-table-jump-condition-presets)))
+		      (condition (if (string-match "^:" name)
+				     (intern-soft name)
+				   (cdr (assoc name org-table-jump-condition-presets)))))
 		 (list (if (memq condition '(enter edit))
 			   (read (read-string
 				  "Condition (sexp): "
@@ -1475,9 +1496,9 @@ in the minibuffer."
 						 org-table-jump-condition-presets))))
 				  'org-table-jump-condition-history))
 			 condition))))
-  (setcdr org-table-jump-condition (if (stringp condition)
-				       (cdr (assoc condition org-table-jump-condition-presets))
-				     condition)))
+  (setcdr org-table-jump-condition (or (and (stringp condition)
+					    (cdr (assoc condition org-table-jump-condition-presets)))
+				       condition)))
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-direction (direction)
@@ -1492,8 +1513,8 @@ When called interactively prompt the user to press a key for the DIRECTION."
 			 (t key)))))
   (setcar org-table-jump-condition direction))
 
-;; simple-call-tree-info: CHECK  
-(defun org-table-get-relative-field (roffset coffset crow ccol)
+;; simple-call-tree-info: REMOVE
+(defun org-table-get-relative-field (roffset coffset crow ccol) 
   "Return the contents of the field in row (CROW+ROFFSET) & column (CCOL+COFFSET).
 CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0."
   (save-excursion
@@ -1505,7 +1526,7 @@ CROW & CCOL are assumed to be the current row & column so we don't need to move 
       ;; dont specify column if we dont have to (faster)
       (org-table-get-field (if (/= coffset 0) (+ ccol coffset))))))
 
-;; simple-call-tree-info: CHECK
+;; simple-call-tree-info: REMOVE
 (defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
 CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
@@ -1523,7 +1544,7 @@ Careful! only use after you've checked the cell satisfies your other jump condit
 	(insert value)))
     (org-table-goto-column ccol)))
 
-;; simple-call-tree-info: CHECK  
+;; simple-call-tree-info: REMOVE  
 (defun org-table-match-relative-field (regex roffset coffset crow ccol)
   "Perform `string-match' with REGEX on contents of field at row (CROW+ROFFSET) & column (CCOL+COFFSET). 
 CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
@@ -1533,9 +1554,9 @@ If the indices refer to a non-existent field return nil."
     (when (> (length str) 0) ;if point is not in table return nil
       (string-match regex str))))
 
-;; simple-call-tree-info: CHECK  
-(defun org-table-relative-hline-p (roffset)
-  "Return non-nil if row at (Current data line + ROFFSET) is a horizontal line."
+;; simple-call-tree-info: REMOVE  
+(defun org-table-relative-hline-p (roffset currentline)
+  "Return non-nil if row at (CURRENTLINE + ROFFSET) is a horizontal line."
   (save-excursion
     (forward-line roffset)
     (org-at-table-hline-p)))
@@ -1576,7 +1597,7 @@ If any bound is not satisfied nil is returned, otherwise non-nil."
   (-all-p 'identity (cl-mapcar (lambda (c b)
 				 (if (numberp b)
 				     (>= c b)
-				   (and (>= c (first b)) (<= c (second b)))))
+				   (<= (first b) c (second b))))
 			       counts bounds)))
 
 (defcustom org-table-timestamp-patterns
@@ -1696,12 +1717,31 @@ by default is `org-table-timestamp-format'."
     (setf (alist-get 'flattenreps org-table-jump-state) reps)
     (org-table-flatten-columns nrows ncols func reps)))
 
+;; simple-call-tree-info: CHECK
+(defun org-table-parse-jump-condition (jmpcnd)
+  (pcase jmpcnd
+    ((pred keywordp)
+     (cdr (assoc jmpcnd org-table-jump-condition-presets)))
+    ((pred stringp) `(matchfield ,jmpcnd))
+    ((and (pred listp)
+	  (app car (pred stringp)))
+     `(matchfield ,@jmpcnd))
+    ((and (pred consp)
+	  (app cdr (pred (lambda (x) (funcall (-orfn 'symbolp 'integerp) x)))))
+     `(gotocell ,(car jmpcnd) ,(cdr jmpcnd)))
+    ((and (pred listp)
+	  (app car op)
+	  (app cdr conds)
+	  (app car (or '& '|)))
+     `(,(case op (| 'or) (& 'and)) ,@(mapcar 'org-table-parse-jump-condition conds)))
+    (_ jmpcnd)))
+
 ;; simple-call-tree-info: DONE
 (defun org-table-jump-next (steps &optional stopcond movedir)
   "Jump to the STEPS next field in the org-table at point matching `org-table-jump-condition'.
 If STEPS is negative jump to the -STEPS previous field. 
 If STOPCOND &/or MOVEDIR are non-nil set `org-table-jump-condition' to these values.
-STOPCOND can be either an sexp or the name of a condition in `org-table-jump-condition-presets'.
+STOPCOND can be anything accepted by `org-table-set-jump-condition' (which see).
 When called interactively STEPS will be set to the numeric value of prefix arg (1 by default).
 If a single \\[universal-argument] prefix is used, prompt for STOPCOND (which can be a preset one,
 or if \"enter manually\" or \"edit preset\" is chosen then a new one edited in the minibuffer), 
@@ -1754,33 +1794,31 @@ In both these cases STEPS is set to 1."
 	 (matchcount 0)
 	 (startpos (point))
 	 (startfield (org-table-get-field)))
-    (eval `(cl-labels ,(append (mapcar 'car org-table-filter-function-bindings))
-	     (while (< matchcount (abs steps))
-	       (setq cellcount 1)
-	       (funcall movefn cellcount)
-	       (while (and (< cellcount numcells)
-			   (not ,(let ((jmpcond
-					(let* ((jmplst (cdr org-table-jump-condition))
-					       (jmpidx (cdr (assoc 'jmpidx org-table-jump-state)))
-					       (newjmpidx (if (> steps 0) (1+ jmpidx)
-							    (1- jmpidx))))
-					  (if (eq (car jmplst) 'jmpseq)
-					      (prog1 (nth (1+ (mod (or newjmpidx 0)
-								   (1- (length jmplst))))
-							  jmplst)
-						(setf (alist-get 'jmpidx org-table-jump-state)
-						      (mod newjmpidx (1- (length jmplst)))))
-					    (setf (alist-get 'jmpidx org-table-jump-state) 0)
-					    jmplst))))
-				   (if (stringp jmpcond)
-				       (list 'matchfield jmpcond)
-				     (if (and (consp jmpcond)
-					      (not (listp (cdr jmpcond))))
-					 (list 'gotocell (car jmpcond) (cdr jmpcond))
-				       jmpcond)))))
-		 (incf cellcount)
-		 (funcall movefn cellcount))
-	       (incf matchcount))))
+    (eval `(cl-labels ,(mapcar 'car org-table-filter-function-bindings)
+	     (symbol-macrolet ,(mapcar '-cons-to-list
+				       (--filter (keywordp (car it)) org-table-jump-condition-presets))
+	       (while (< matchcount (abs steps))
+		 (setq cellcount 1)
+		 (funcall movefn cellcount)
+		 (while (and (< cellcount numcells)
+			     (not ,(let ((jmpcond
+					  (let* ((jmplst (cdr org-table-jump-condition))
+						 (jmpidx (cdr (assoc 'jmpidx org-table-jump-state)))
+						 (newjmpidx (if (> steps 0) (1+ jmpidx)
+							      (1- jmpidx))))
+					    (if (and (listp jmplst)
+						     (eq (car jmplst) 'jmpseq))
+						(prog1 (nth (1+ (mod (or newjmpidx 0)
+								     (1- (length jmplst))))
+							    jmplst)
+						  (setf (alist-get 'jmpidx org-table-jump-state)
+							(mod newjmpidx (1- (length jmplst)))))
+					      (setf (alist-get 'jmpidx org-table-jump-state) 0)
+					      jmplst))))
+				     (org-table-parse-jump-condition jmpcond))))
+		   (incf cellcount)
+		   (funcall movefn cellcount))
+		 (incf matchcount)))))
     (org-table-goto-line currentline)
     (org-table-goto-column currentcol)
     (cons currentline currentcol)))
@@ -1803,7 +1841,6 @@ If NAMEDP is non-nil only list named tables."
 
 
 ;; IDEAS:
-;; - jump sequences; list of jump types which are traversed in sequence, and can include individual cell references
 ;; - table specific jump sequences; stored in #+TBLJMP: footer and loaded automatically by new command `org-table-jump-default'
 ;;    different conditions/sequences for different prefix keys.
 ;;    Have an option in org-table-set-jump-condition which selects the table specific jump condition, and a command to save
