@@ -1522,23 +1522,21 @@ When called interactively prompt the user to press a key for the DIRECTION."
 			 (t key)))))
   (setcar org-table-jump-condition direction))
 
-;; simple-call-tree-info: REMOVE
+;; simple-call-tree-info: CHECK
 (defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
 CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
-  (let (field)
-    (save-excursion
-      (org-table-goto-line (+ roffset crow))
-      (org-table-goto-column (+ coffset ccol))
-      (setq field (org-table-get-field))
-      (when (or noprompt
-		(y-or-n-p (format "Change value in cell %d %s, and %d %s"
-				  (abs roffset) (if (> roffset 0) "below" "above")
-				  (abs coffset) (if (> coffset 0) "right" "left"))))
-	(org-table-blank-field)
-	(insert value)))
-    (org-table-goto-column ccol)))
+  (save-excursion
+    (org-table-goto-line (+ roffset crow))
+    (org-table-goto-column (+ coffset ccol))
+    (when (or noprompt
+	      (y-or-n-p (format "Change value in cell %d %s, and %d %s"
+				(abs roffset) (if (> roffset 0) "below" "above")
+				(abs coffset) (if (> coffset 0) "right" "left"))))
+      (org-table-blank-field)
+      (insert value)))
+  (org-table-goto-column ccol))
 
 ;; simple-call-tree-info: TODO; fix documentation
 (defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
