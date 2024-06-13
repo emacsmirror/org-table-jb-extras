@@ -873,10 +873,11 @@ not used."
      . "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((matchfield (regex &optional roffset coffset) (string-match regex (field roffset coffset)))
      . "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
-    ((setfield (value &optional roffset coffset noprompt) ;TODO need to also change lisp table
-	       (org-table-set-relative-field value noprompt (or roffset 0) (or coffset 0) currentline currentcol)
-	       (setf (nth (1- (+ currentcol coffset))
-			  (nth (1- (+ currentline roffset)) table))
+    ((setfield (value &optional roffset coffset noprompt)
+	       (org-table-set-relative-field value noprompt (+ (or roffset 0) currentline)
+					     (+ (or coffset 0) currentcol))
+	       (setf (nth (1- (+ currentcol (or coffset 0)))
+			  (nth (1- (+ currentline (or roffset 0))) table))
 		     value))
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
@@ -1525,20 +1526,19 @@ When called interactively prompt the user to press a key for the DIRECTION."
   (setcar org-table-jump-condition direction))
 
 ;; simple-call-tree-info: CHECK
-(defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
-  "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
-CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
+(defun org-table-set-relative-field (value noprompt line col)
+  "Set contents of field at position LINE, COL to VALUE.
+Prompt the user unless NOPROMPT is non-nil.
 Careful! only use after you've checked the cell satisfies your other jump conditions."
   (save-excursion
-    (org-table-goto-line (+ roffset crow))
-    (org-table-goto-column (+ coffset ccol))
+    (org-table-goto-line line)
+    (org-table-goto-column col)
     (when (or noprompt
-	      (y-or-n-p (format "Change value in cell %d %s, and %d %s"
-				(abs roffset) (if (> roffset 0) "below" "above")
-				(abs coffset) (if (> coffset 0) "right" "left"))))
+	      (y-or-n-p (format "Change field in line %d, column %d to \"%s\""
+				line col value)))
       (org-table-blank-field)
       (insert value)))
-  (org-table-goto-column ccol))
+  (org-table-goto-column col))
 
 ;; simple-call-tree-info: TODO; fix documentation
 (defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
