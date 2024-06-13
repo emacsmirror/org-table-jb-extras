@@ -878,10 +878,8 @@ not used."
 	       t)
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
-		       (org-table-set-relative-field ;TODO use setfield here
-			(replace-regexp-in-string regexp rep (field roffset coffset))
-			noprompt (or roffset 0) (or coffset 0) currentline currentcol)
-		       t)
+		       (setfield (replace-regexp-in-string regexp rep (field roffset coffset))
+				 roffset coffset noprompt))
      . "Replace matches to REGEXP with REP in field in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((field2num (&optional roffset coffset)
 		(string-to-number (field roffset coffset)))
