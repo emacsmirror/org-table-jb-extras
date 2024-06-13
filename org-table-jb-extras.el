@@ -899,16 +899,20 @@ not used."
      . "Convert date in relative field to different format")
     ((flatten (&optional nrows ncols func reps) (org-table-jump-flatten-cells nrows ncols func reps)) .
      "See `org-table-flatten-columns'.") ;TODO; check this works at currentline & currentcol
-    ((hline-p (roffset) (seq-contains table-hlines (+ (1- currentline) roffset))) .
-     "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
+    ((hline-p (roffset)
+	      (seq-contains table-hlines (+ (1- currentline) roffset))) .
+	      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
+    ;; TODO: wrapper around org-table-insert-hlines
     ((countcells (dir roffset coffset &rest regexs)
-		 (apply 'org-table-count-matching-fields dir roffset coffset currentline currentcol regexs)) .
-		 "Count cells with fields matching REGEXS sequentially in a given DIRection.")
+		 (apply 'org-table-count-matching-fields
+			table table-dlines dir (+ currentline roffset) (+ currentcol coffset) numdlines numcols regexs))
+     . "Return list of counts of sequential cells, in direction DIR from cell offset, matching each regexp in REGEXS.")
     ((checkcounts (counts bounds) (org-table-check-bounds counts bounds)) .
      "Check BOUNDS of each number in COUNTS.")
     ((sumcounts (dir roffset coffset &rest regexs)
-		(apply '+ (apply 'org-table-count-matching-fields dir roffset coffset currentline currentcol regexs))) . 
-		"Count total No. of matches to REGEXS sequentially in a given DIRection.")
+		(apply '+ (apply 'org-table-count-matching-fields
+				 table table-dlines dir (+ currentline roffset) (+ currentcol coffset) regexs)))
+     . "Return total No. of sequential matches to REGEXS in direction DIR from cell offset.")
     ((getvar (key) (cdr (assoc key org-table-jump-state))) .
      "Get the value associated with KEY in `org-table-jump-state'.")
     ((setvar (key val)
@@ -1363,24 +1367,27 @@ The cdr can be either:
       empty cell above one containing \"bar\", then jump to the next non-empty cell to the right of one
       containing \"foo\", then jump to the last cell, and repeat.
 
-Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which by default includes:
+Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which by default includes
+the following functions. Many of these functions have optional ROFFSET & COFFSET args which refer to row & column 
+offsets from the current cell, and allow you to act on cells neighbouring the current one. If ROFFSET or COFFSET
+is left blank then they default to 0. Also note that cell refers to the position in a table and field to its contents.
 
- (field &optional ROFFSET COFFSET) = a wrapper around `org-table-get-relative-field'.
- (matchfield REGEX &optional ROFFSET COFFSET) = a wrapper around `org-table-match-relative-field'.
- (setfield VALUE &optional ROFFSET COFFSET NOPROMPT) = a wrapper around `org-table-set-relative-field',
- (replace-in-field REGEXP REP &optional ROFFSET COFFSET) = replace matches to REGEXP with REP in field
-    in row (current row + ROFFSET) & column (current column + COFFSET).
+ (field &optional ROFFSET COFFSET) = return the field in a cell.
+ (matchfield REGEX &optional ROFFSET COFFSET) = call `string-match' with REGEX on a field.
+ (setfield VALUE &optional ROFFSET COFFSET NOPROMPT) = change the contents of a cell.
+ (replace-in-field REGEXP REP &optional ROFFSET COFFSET) = replace matches to REGEXP with REP in a field.
  (field2num &optional ROFFSET COFFSET) = read a field as a number and return it.
- (changenumber FUNC &optional roffset coffset noprompt) = apply FUNC to number in field and replace field with result.
+ (changenumber FUNC &optional roffset coffset noprompt) = apply FUNC to the number in a field and replace with the result.
  (flatten NROWS NCOLS FUNC REPS) = a wrapper around `org-table-flatten-columns'.
- (hline-p ROFFSET) = a wrapper around `org-table-relative-hline-p'.
- (countcells DIR ROFFSET COFFSET &rest REGEXS) = a wrapper around `org-table-count-matching-fields'.
+ (hline-p ROFFSET) = test if the row at ROFFSET rows beneath the current one, counting hlines, is an hline (horizontal line).
+ (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset, 
+  return a list containing counts of sequential matches to the 1st regexp, followed by the 2nd regexp, etc.
  (checkcounts COUNTS BOUNDS) = a wrapper around `org-table-check-bounds'.
  (sumcounts DIR ROFFSET COFFSET &rest REGEXS) = similar to countcells but returns total No. of matches.
  (getvar KEY) = get the value associated with KEY in `org-table-jump-state'.
  (setvar KEY VAL) = set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS) = return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
- (gotocell LINE COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
+ (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
 
 Be careful with the setfield, replace-in-field, changenum & flatten functions, only use them if your other jump conditions 
 are satisfied otherwise you may end up changing more than you want.
@@ -1418,6 +1425,10 @@ You can also make use of the following variables:
     ("1st<>last col" . (jmpseq :left :right))
     (:first . (gotocell 1 1))
     (:last . (gotocell numdlines numcols))
+    (:top . (gotocell 1))
+    (:bottom . (gotocell numdlines))
+    (:left . (gotocell nil 1))
+    (:right . (gotocell nil numcols))
     (:hline-above . (hline-p -1))
     (:hline-below . (hline-p 1))
     (:empty . (matchfield "^\\s-*$"))
@@ -1514,19 +1525,6 @@ When called interactively prompt the user to press a key for the DIRECTION."
   (setcar org-table-jump-condition direction))
 
 ;; simple-call-tree-info: REMOVE
-(defun org-table-get-relative-field (roffset coffset crow ccol) 
-  "Return the contents of the field in row (CROW+ROFFSET) & column (CCOL+COFFSET).
-CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0."
-  (save-excursion
-    (if (/= roffset 0)
-	(if (not (org-table-goto-line (+ crow roffset)))
-	    ""
-	  ;;need to specify column here since org-table-goto-line changed it
-	  (org-table-get-field (+ ccol coffset)))
-      ;; dont specify column if we dont have to (faster)
-      (org-table-get-field (if (/= coffset 0) (+ ccol coffset))))))
-
-;; simple-call-tree-info: REMOVE
 (defun org-table-set-relative-field (value noprompt roffset coffset crow ccol)
   "Set contents of cell in row (CROW+ROFFSET) & column (CCOL+COFFSET) to VALUE.
 CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
@@ -1544,46 +1542,36 @@ Careful! only use after you've checked the cell satisfies your other jump condit
 	(insert value)))
     (org-table-goto-column ccol)))
 
-;; simple-call-tree-info: REMOVE  
-(defun org-table-match-relative-field (regex roffset coffset crow ccol)
-  "Perform `string-match' with REGEX on contents of field at row (CROW+ROFFSET) & column (CCOL+COFFSET). 
-CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0.
-By default ROFFSET & COFFSET are 0.
-If the indices refer to a non-existent field return nil."
-  (let ((str (org-table-get-relative-field roffset coffset crow ccol)))
-    (when (> (length str) 0) ;if point is not in table return nil
-      (string-match regex str))))
-
-;; simple-call-tree-info: REMOVE  
-(defun org-table-relative-hline-p (roffset currentline)
-  "Return non-nil if row at (CURRENTLINE + ROFFSET) is a horizontal line."
-  (save-excursion
-    (forward-line roffset)
-    (org-at-table-hline-p)))
-
-;; simple-call-tree-info: CHECK  
-(defun org-table-count-matching-fields (direction roffset coffset crow ccol &rest regexs)
-  "Count fields matching REGEXS sequentially in a given DIRECTION.
+;; simple-call-tree-info: TODO; fix documentation
+(defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
+  "Count fields in TABLE matching REGEXS sequentially in a given DIRECTION.
+TABLE should be a list of lists are returned by `org-table-to-lisp'.
+DLINES should be a list of indices of the rows of TABLE that correspond to data line (i.e. not hlines).
 DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction of movement from the starting cell. 
 You can use the variable `movedir' in `org-table-jump-condition' for the current direction of movement.
-Starting with cell in row CROW+ROFFSET, and column CCOL+COFFSET, fields are traversed sequentially in the
-given DIRECTION and matched against the first regexp, when the first mismatch occurs the next regexp is tried 
-and used for matching subsequent fields until a mismatch, etc. until there is a mismatch with the last regexp.
+Starting with cell in ROW & COL position, fields are traversed sequentially in the given DIRECTION,
+and matched against the first regexp, when the first mismatch occurs the next regexp is tried 
+and used for matching subsequent fields until a mismatch etc. until there is a mismatch with the last regexp.
 The return value is a list of counts of matches for each regexp.
-This can be used for finding cells based on the content of neighbouring cells.
-CROW & CCOL are assumed to be the current row & column so we don't need to move if ROFFSET & COFFSET are 0."
-  (let ((counts (make-list (length regexs) 0))
-	(r 0) (c 0))
+This can be used for finding cells based on the content of neighbouring cells."
+  (let* ((counts (make-list (length regexs) 0))
+	 (row (1- row)) (col (1- col)) (r 0) (c 0)
+	 (incfn `(lambda nil ,(case direction
+				(up '(decf r))
+				(down '(incf r))
+				(left '(decf c))
+				(right '(incf c))
+				(t (error "Invalid direction"))))))
     (dotimes (i (length regexs))
-      (while (org-table-match-relative-field
-	      (nth i regexs) (+ r roffset) (+ c coffset) crow ccol)
+      (while (let ((col2 (+ col c))
+		   (row2 (+ row r)))
+	       (and (<= 0 col2 ncols)
+		    (<= 0 row2 nrows)
+		    (string-match (nth i regexs)
+				  (nth col2
+				       (nth (nth row2 dlines) table)))))
 	(incf (nth i counts))
-	(case direction
-	  (up (decf r))
-	  (down (incf r))
-	  (left (decf c))
-	  (right (incf c))
-	  (t (error "Invalid direction")))))
+	(funcall incfn)))
     counts))
 
 ;; simple-call-tree-info: CHECK  
@@ -1592,7 +1580,7 @@ CROW & CCOL are assumed to be the current row & column so we don't need to move 
 COUNTS should be a list of numbers, and BOUNDS a list of the same length containing
 a mixture of numbers and lists of length 2. Each number c in COUNTS is checked against
 the corresponding element b in BOUNDS as follows: if b is a single number check (>= c b),
-if b is a list check (and (>= c (first b)) (<= c (second b))). 
+if b is a list check (<= (first b) c (second b)). 
 If any bound is not satisfied nil is returned, otherwise non-nil."
   (-all-p 'identity (cl-mapcar (lambda (c b)
 				 (if (numberp b)
@@ -1793,7 +1781,7 @@ In both these cases STEPS is set to 1."
 	 (cellcount 0)
 	 (matchcount 0)
 	 (startpos (point))
-	 (startfield (org-table-get-field)))
+	 (startfield (nth (1- startcol) (nth (nth (1- startline) table-dlines) table))))
     (eval `(cl-labels ,(mapcar 'car org-table-filter-function-bindings)
 	     (symbol-macrolet ,(mapcar '-cons-to-list
 				       (--filter (keywordp (car it)) org-table-jump-condition-presets))
