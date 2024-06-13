@@ -875,7 +875,9 @@ not used."
      . "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
     ((setfield (value &optional roffset coffset noprompt) ;TODO need to also change lisp table
 	       (org-table-set-relative-field value noprompt (or roffset 0) (or coffset 0) currentline currentcol)
-	       t)
+	       (setf (nth (1- (+ currentcol coffset))
+			  (nth (1- (+ currentline roffset)) table))
+		     value))
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
 		       (setfield (replace-regexp-in-string regexp rep (field roffset coffset))
