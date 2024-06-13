@@ -874,11 +874,16 @@ not used."
     ((matchfield (regex &optional roffset coffset) (string-match regex (field roffset coffset)))
      . "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
     ((setfield (value &optional roffset coffset noprompt)
-	       (org-table-set-relative-field value noprompt (+ (or roffset 0) currentline)
-					     (+ (or coffset 0) currentcol))
-	       (setf (nth (1- (+ currentcol (or coffset 0)))
-			  (nth (1- (+ currentline (or roffset 0))) table))
-		     value))
+	       (let ((line (+ currentline (or roffset 0)))
+		     (col (+ currentcol (or coffset 0))))
+		 (save-excursion (org-table-goto-line line)
+				 (org-table-goto-column col)
+				 (when (or noprompt
+					   (y-or-n-p (format "Change field in line %d, column %d to \"%s\""
+							     line col value)))
+				   (org-table-blank-field)
+				   (insert value)))
+		 (setf (nth (1- col) (nth (1- line) table)) value)))
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
 		       (when (string-match regexp (field roffset coffset))
@@ -1409,7 +1414,7 @@ You can also make use of the following variables:
  startline = the data line number that point was in at the start
  movedir = the current direction of field traversal ('up,'down,'left or 'right)
  numcells = the total number of cells in the table
- cellcount = the number of cells checked since the last match
+ cellcount = the number of cells checked so far
  startpos = the position of point before starting.")
 
 ;; simple-call-tree-info: DONE
@@ -1524,21 +1529,6 @@ When called interactively prompt the user to press a key for the DIRECTION."
 			 ((104 106 107 108 59 39) 'right)
 			 (t key)))))
   (setcar org-table-jump-condition direction))
-
-;; simple-call-tree-info: CHECK
-(defun org-table-set-relative-field (value noprompt line col)
-  "Set contents of field at position LINE, COL to VALUE.
-Prompt the user unless NOPROMPT is non-nil.
-Careful! only use after you've checked the cell satisfies your other jump conditions."
-  (save-excursion
-    (org-table-goto-line line)
-    (org-table-goto-column col)
-    (when (or noprompt
-	      (y-or-n-p (format "Change field in line %d, column %d to \"%s\""
-				line col value)))
-      (org-table-blank-field)
-      (insert value)))
-  (org-table-goto-column col))
 
 ;; simple-call-tree-info: TODO; fix documentation
 (defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
@@ -1785,7 +1775,7 @@ In both these cases STEPS is set to 1."
 	     (symbol-macrolet ,(mapcar '-cons-to-list
 				       (--filter (keywordp (car it)) org-table-jump-condition-presets))
 	       (while (< matchcount (abs steps))
-		 (setq cellcount 1)
+		 (incf cellcount)
 		 (funcall movefn cellcount)
 		 (while (and (< cellcount numcells)
 			     (not ,(let ((jmpcond
