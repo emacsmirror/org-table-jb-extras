@@ -881,23 +881,23 @@ not used."
 		     value))
      . "Set field in row (current row + ROFFSET) & column (current column + COFFSET) to VALUE.")
     ((replace-in-field (regexp rep &optional roffset coffset noprompt)
-		       (setfield (replace-regexp-in-string regexp rep (field roffset coffset))
-				 roffset coffset noprompt))
+		       (when (string-match regexp (field roffset coffset))
+			 (setfield (replace-regexp-in-string regexp rep (field roffset coffset))
+				   roffset coffset noprompt)))
      . "Replace matches to REGEXP with REP in field in row (current row + ROFFSET) & column (current column + COFFSET).")
-    ((field2num (&optional roffset coffset)
-		(string-to-number (field roffset coffset)))
+    ((field2num (&optional roffset coffset) (string-to-number (field roffset coffset)))
      . "Read field in row (current row + ROFFSET) & column (current column + COFFSET) as a number and return it.")
     ((changenumber (func &optional roffset coffset noprompt)
 		   (setfield (number-to-string (funcall func (field2num roffset coffset)))
 			     roffset coffset noprompt))
      . "Apply FUNC to number in field, and replace the field with the result.")
-    ((convertdate (&optional noprompt outfmt roffset coffset &rest patterns)
+    ((convertdate (&optional outfmt roffset coffset noprompt &rest patterns)
 		  (let ((newfield (org-table-convert-timestamp
 				   (field roffset coffset) outfmt patterns)))
-		    (if (not newfield) t
+		    (if (not newfield) nil
 		      (setfield newfield roffset coffset noprompt)
 		      (org-table-align))))
-     . "Convert date in relative field to different format")
+     . "Convert date in relative field to different format, if it contains one, otherwise return nil.")
     ((flatten (&optional nrows ncols func reps) (org-table-jump-flatten-cells nrows ncols func reps)) .
      "See `org-table-flatten-columns'.") ;TODO; check this works at currentline & currentcol
     ((hline-p (roffset)
@@ -1641,6 +1641,7 @@ This will be automatically updated when `org-table-timestamp-patterns' is update
   :group 'org-table
   :type 'string)
 
+;;;###simple-call-tree-info: CHECK
 (defun org-table-convert-timestamp (field &optional outfmt patterns)
   "Replace timestamp in FIELD with datetime in format specified by OUTFMT, and return a new string.
 Optional arg PATTERNS is a list of java style date-time matching patterns. 
