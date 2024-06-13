@@ -901,13 +901,13 @@ not used."
 				   (field roffset coffset) outfmt patterns)))
 		    (if (not newfield) nil
 		      (setfield newfield roffset coffset noprompt)
-		      (org-table-align))))
-     . "Convert date in relative field to different format, if it contains one, otherwise return nil.")
+		      (org-table-align)
+		      t))) ;;must return non-nil
+     . "Convert date in relative field to different format if it contains one, otherwise return nil.")
     ((flatten (&optional nrows ncols func reps) (org-table-jump-flatten-cells nrows ncols func reps)) .
      "See `org-table-flatten-columns'.") ;TODO; check this works at currentline & currentcol
-    ((hline-p (roffset)
-	      (seq-contains table-hlines (+ (1- currentline) roffset))) .
-	      "Return non-nil if row at (current row + ROFFSET) is a horizontal line.")
+    ((hline-p (roffset) (seq-contains table-hlines (+ (1- currentline) roffset))) .
+     "Return non-nil if row at (current row + ROFFSET, including hlines) is a horizontal line.")
     ;; TODO: wrapper around org-table-insert-hlines
     ((countcells (dir roffset coffset &rest regexs)
 		 (apply 'org-table-count-matching-fields
@@ -933,12 +933,11 @@ not used."
   "Function bindings (with descriptions) used by `org-table-jump-condition' & `org-dblock-write:tablefilter'.
 These function bindings can be used in the cdr of `org-table-jump-condition', or the :filter parameter of
 a tablefilter dynamic block. For :filter parameters the functions are created after the default row & column
-variables have been created, and so can make use of those variables. However functions that use those variables
-are not usable in `org-table-jump-condition', and be careful not to shadow any existing functions used by
- `org-table-filter-list'.
+variables (c1, c2, etc.) have been created, and so can make use of those variables. However functions that use 
+those variables are not usable in `org-table-jump-condition' (which uses other variables), and be careful not 
+to shadow any existing functions used by `org-table-filter-list'.
 These function will only work in a :filter parameter: rowmatch & rowsum
-and the functions in the list from field onwards will only work in `org-table-jump-condition' (mostly wrapper 
-functions, see the documentation of the functions they wrap for more info)."
+The functions in the list from \"field\" onwards will only work in `org-table-jump-condition'."
   :group 'org-table
   :type '(repeat (cons (sexp :tag "Function") (string :tag "Description"))))
 
