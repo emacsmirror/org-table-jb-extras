@@ -899,13 +899,14 @@ not used."
     ((convertdate (&optional outfmt roffset coffset noprompt &rest patterns)
 		  (let ((newfield (org-table-convert-timestamp
 				   (field roffset coffset) outfmt patterns)))
-		    (if (not newfield) nil
+		    (if (not newfield) nil ;;must return nil if no date found
 		      (setfield newfield roffset coffset noprompt)
 		      (org-table-align)
 		      t))) ;;must return non-nil
      . "Convert date in relative field to different format if it contains one, otherwise return nil.")
-    ((flatten (&optional nrows ncols func reps) (org-table-jump-flatten-cells nrows ncols func reps)) .
-     "See `org-table-flatten-columns'.") ;TODO; check this works at currentline & currentcol
+    ((flatten (&optional nrows ncols func reps)
+	      (org-table-jump-flatten-cells currentline currentcol nrows (or ncols 1) func reps)) .
+	      "See `org-table-flatten-columns'.")
     ((hline-p (roffset) (seq-contains table-hlines (+ (1- currentline) roffset))) .
      "Return non-nil if row at (current row + ROFFSET, including hlines) is a horizontal line.")
     ;; TODO: wrapper around org-table-insert-hlines
@@ -1659,8 +1660,9 @@ by default is `org-table-timestamp-format'."
 			field)))))
 
 ;; simple-call-tree-info: CHECK
-(defun org-table-jump-flatten-cells (nrows ncols func reps)
-  "Wrapper of `org-table-flatten-columns' for setting NROWS, NCOLS, FUNC & REPS when used in `org-table-jump-condition'."
+(defun org-table-jump-flatten-cells (line col nrows ncols func reps)
+  "Wrapper of `org-table-flatten-columns' for setting NROWS, NCOLS, FUNC & REPS when used in `org-table-jump-condition'.
+Arguments LINE & COL are the position of the starting cell."
   (let ((nrows (if (eq nrows 'prompt)
 		   (read-number "Number of rows (-ve numbers count backwards): ")
 		 (or nrows
@@ -1691,7 +1693,9 @@ by default is `org-table-timestamp-format'."
     (setf (alist-get 'flattencols org-table-jump-state) ncols)
     (setf (alist-get 'flattenfunc org-table-jump-state) func)
     (setf (alist-get 'flattenreps org-table-jump-state) reps)
-    (org-table-flatten-columns nrows ncols func reps)))
+    (save-excursion (org-table-goto-line line)
+		    (org-table-goto-column col)
+		    (org-table-flatten-columns nrows ncols func reps))))
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-parse-jump-condition (jmpcnd)
