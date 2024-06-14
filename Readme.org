@@ -36,18 +36,18 @@ Alternatively if you don't want to depend on external binaries you can use the *
 If you want more fine-grained control you can use *org-table-flatten-columns* to select exactly which cells should be combined, and how they should be combined (see *org-table-flatten-functions*). When used in combination with *org-table-jump-next* (using *flatten*, see below) and keyboard macros this can be very convenient.
 ** Navigating/altering org-table cells
 The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering tables cell-by-cell. You select a jump conditions which determine the sequence of cells visited when *org-table-jump-next* is invoked repeatedly.
-There are many predefined jump conditions in *org-table-jump-condition-presets* such as "empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
+There are many predefined jump conditions in *org-table-jump-condition-presets* such as ":empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
 
-These presets can be selected, altered, or you can define you own using an arbitrary lisp expression, by either using a *C-u* prefix arg with *org-table-jump-next/org-table-jump-prev* or calling *org-table-set-jump-condition*.
+These presets can be selected, altered, or you can define you own by either pressing *C-u* followed by  *M-x org-table-jump-next/org-table-jump-prev* or pressing *M-x org-table-set-jump-condition*, or can customize *org-table-jump-condition-presets* if you want to use the condition again in the future.
 You can also select the order in which cells are checked by using a double *C-u* prefix when calling *org-table-jump-next/org-table-jump-prev*, or by calling *org-table-set-jump-direction*.
 
-When defining your own jump condition you can make use of functions defined in *org-table-filter-function-bindings* to help define the condition, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
+Jump conditions are defined using a special syntax explained in the docstring for *org-table-jump-condition* which is displayed when you are prompted to enter a condition. In a jump condition definition you can make use of functions defined in *org-table-filter-function-bindings* to help define the condition, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
-For example the following sexp can be used to flatten cells to the right of empty ones by joining them with the first cell above that isnt to the right of an empty one:
+For example the following form can be used to flatten cells to the right of empty ones by joining them with the first cell above that isnt to the right of an empty one:
 #+BEGIN_SRC  emacs-lisp :results none
-(and (matchfield "\\S-") (matchfield "\\S-" 0 -1) (matchfield "^\\s-*$" 1 -1) (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1))
+(& "\\S-" ("\\S-" 0 -1) ("^\\s-*$" 1 -1) (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1))
 #+END_SRC
-To use it, put point in an org-table, do *C-u M-x org-table-jump-next*, choose "Enter manually" from the ido-menu, and enter the sexp above. It will transform this table:
+To use it, put point in an org-table, do *C-u M-x org-table-jump-next*, choose "Enter manually" from the menu, and enter the form above. It will transform this table:
 | foo | bar  |
 |     | choo |
 |     | zoo  |
@@ -55,13 +55,24 @@ To use it, put point in an org-table, do *C-u M-x org-table-jump-next*, choose "
 into this one:
 | foo | bar choo zoo |
 | aaa | bbb          |
-After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as inserting horizontal lines, or marking altered cells.
+After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as marking altered cells.
 
 Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks. The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of this.
 
 To debug a jump conditions place "(debug nil)" form somewhere within it.
 ** Filtering org-tables
 *org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
+
+To use it create add a tablefilter block like the following where you want the subtable to be inserted.
+Replace <NAME> with the name of the table you want to filter, and <FILTER> with an sexp that evaluates
+to non-nil for rows of the original table that are to be inserted in the block. 
+
+\#+BEGIN: tablefilter :tblname "<NAME>" :filter <FILTER>
+\#+END:
+
+The <FILTER> may use special variables, "c1", "c2", "row", etc. containing the contents of the current row,
+and also special function defined in *org-table-filter-function-bindings*. For more info see the docstring
+for *org-dblock-write:tablefilter*.
 
 For more info about dynamic blocks see here: https://orgmode.org/manual/Dynamic-Blocks.html 
 * Commands & keybindings
