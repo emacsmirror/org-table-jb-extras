@@ -231,7 +231,7 @@ If NROWS is a negative integer then the NROWS cells above and including the curr
 If NROWS is not a number then all cells in the current column between horizontal separator lines will
 be used. Function FN should take a single argument; a list of the contents of the cells. 
 Return value is a cons cell containing the number of rows used & the length of the newly combined field."
-  (unless (org-at-table-p) (error "Not in org-table"))
+  (unless (org-at-table-p) (error "No org-table here"))
   (unless (numberp nrows)
     (let ((col (org-table-current-column)))
       (re-search-forward org-table-hline-regexp (org-table-end) 1)
@@ -290,7 +290,7 @@ Return value is the sum of lengths of the text in the newly combined fields."
 		  (ido-choose-function
 		   org-table-flatten-functions nil "User function with one arg (list of fields): " t)
 		  (if regionp 1 (read-number "Number or repetitions: " 1)))))
-  (if (not (org-at-table-p)) (error "No org-table at point"))
+  (unless (org-at-table-p) (error "No org-table here"))
   (let* ((startline (org-table-current-line))
 	 (line startline)
 	 (col (org-table-current-column))
@@ -627,7 +627,7 @@ When called interactively or if WIDTH is nil, the user will be prompted for a wi
 If ARG is non-nil, or a prefix arg is used interactively, put a horizontal line between each group of rows 
 corresponding to the same original row."
   (interactive "nNew column width: \nP")
-  (unless (org-at-table-p) (error "Not in an org-mode table"))
+  (unless (org-at-table-p) (error "No org-table here"))
   (let* ((curcol (org-table-current-column))
          (table (org-table-to-lisp))
 	 (curline (org-table-current-line))
@@ -694,7 +694,7 @@ sets of rows in the new table corresponding with rows in the original table."
 			     (setq str (read-string "Indices of fixed columns (space separated): ")))
 			   (mapcar 'string-to-number
 				   (cl-remove "" (split-string str "\\s-+") :test 'equal))))))
-    (unless (org-at-table-p) (error "Not in an org-mode table"))
+    (unless (org-at-table-p) (error "No org-table here"))
     (let* ((table (org-table-to-lisp))
 	   (nrows (length table))
 	   (ncols (org-table-ncols table))
@@ -771,8 +771,7 @@ have average length at least MIN2. Finally you can limit cell splitting to only 
 If called interactively with a prefix arg these last 3 arguments will be prompted for. By default they are
 not used."
   (interactive)
-  (unless (org-at-table-p)
-    (error "Point is not in an org-table"))
+  (unless (org-at-table-p) (error "No org-table here"))
   (let* ((col (or col (org-table-current-column)))
          (beg (or beg (if (use-region-p) (region-beginning) (org-table-begin))))
          (end (or end (if (use-region-p) (region-end) (- (org-table-end) 2))))
@@ -1081,7 +1080,7 @@ If WHERE arg is supplied report values for table at that position in the buffer.
   (interactive)
   (save-excursion
     (if where (goto-char where))
-    (if (not (org-at-table-p)) (error "No org-table here"))
+    (unless (org-at-table-p) (error "No org-table here"))
     (org-table-analyze)
     (let ((ndlines (length (seq-filter 'numberp org-table-dlines)))
 	  (nhlines (length (seq-filter 'numberp org-table-hlines)))
@@ -1798,7 +1797,7 @@ In both these cases STEPS is set to 1."
       (if (and doprompt (>= steps 16))
 	  (call-interactively 'org-table-set-jump-direction)))
     (when doprompt (setq steps 1) (org-table-show-jump-condition)))
-  (unless (org-at-table-p) (error "Point is not in an org-table"))
+  (unless (org-at-table-p) (error "No org-table here"))
   (let* ((table (org-table-to-lisp))
 	 (table-hlines (-find-indices 'symbolp table))
 	 (table-dlines (-find-indices 'listp table))
@@ -1880,6 +1879,17 @@ If NAMEDP is non-nil only list named tables."
   (occur (if namedp "\\+\\(TBL\\|tbl\\)\\(NAME\\|name\\):"
 	   "^\\s-*[^|].*\n\\s-*|.*"))
   (pop-to-buffer "*Occur*"))
+
+;; simple-call-tree-info: TODO
+(defun org-table-get-stored-jump-condition nil
+  "Return the jump condition stored on the #+TBLJMP line after the org-table at point.
+If no such line exists return nil."
+  (unless (org-at-table-p) (error "No org-table here"))
+  (save-excursion
+    (goto-char (org-table-end))
+    (let ((case-fold-search t))
+      (when (looking-at "\\(?:[ \t]*\n\\)*[ \t]*\\(?:#\\+TBLFM:.*\n\\)*#\\+TBLJMP: *\\(.*\\)")
+	(read (match-string-no-properties 1))))))
 
 
 ;; IDEAS:
