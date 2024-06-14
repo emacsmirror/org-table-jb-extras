@@ -1398,6 +1398,7 @@ is left blank then they default to 0. Also note that cell refers to the position
  (changenumber FUNC &optional roffset coffset noprompt) = apply FUNC to the number in a field and replace with the result.
  (flatten NROWS NCOLS FUNC REPS) = a wrapper around `org-table-flatten-columns'.
  (hline-p ROFFSET) = test if the row at ROFFSET rows beneath the current one, counting hlines, is an hline (horizontal line).
+ (addhline ROFFSET) = insert a horizontal line underneath current line + ROFFSET (returns non-nil)
  (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset, 
   return a list containing counts of sequential matches to the 1st regexp, followed by the 2nd regexp, etc.
  (checkcounts COUNTS BOUNDS) = a wrapper around `org-table-check-bounds'.
@@ -1407,8 +1408,8 @@ is left blank then they default to 0. Also note that cell refers to the position
  (checkvar KEY &rest VALS) = return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
  (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
 
-Be careful with the setfield, replace-in-field, changenum & flatten functions, only use them if your other jump conditions 
-are satisfied otherwise you may end up changing more than you want.
+Be careful with functions that alter the table (e.g. setfield) only use them if your other jump conditions are satisfied 
+otherwise you may end up changing more than you want.
 getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next', which can be
 used for creating more complex jump patterns.
 You can also make use of the following variables:
