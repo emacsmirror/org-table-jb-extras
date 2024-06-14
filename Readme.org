@@ -67,8 +67,8 @@ To use it create add a tablefilter block like the following where you want the s
 Replace <NAME> with the name of the table you want to filter, and <FILTER> with an sexp that evaluates
 to non-nil for rows of the original table that are to be inserted in the block. 
 
-#+BEGIN: tablefilter :tblname "<NAME>" :filter <FILTER> \
-#+END:
+\ #+BEGIN: tablefilter :tblname "<NAME>" :filter <FILTER> \
+\ #+END:
 
 The <FILTER> may use special variables, "c1", "c2", "row", etc. containing the contents of the current row,
 and also special function defined in *org-table-filter-function-bindings*. For more info see the docstring
