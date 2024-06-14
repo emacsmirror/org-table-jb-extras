@@ -1386,27 +1386,27 @@ The car should be a symbol to specify the direction of traversal across the org-
 
 The cdr can be either:
 
- - 1) A keyword matching an element of `org-table-jump-condition-presets', e.g. :empty
+ - 1. A keyword matching an element of `org-table-jump-condition-presets', e.g. :empty
       (called a \"keyword condition\" in the following text).
- - 2) A regexp for matching the contents of the desired cell, e.g. \"foo\".
- - 3) A list containing a regexp followed by one or two numbers indicating the row & column
+ - 2. A regexp for matching the contents of the desired cell, e.g. \"foo\".
+ - 3. A list containing a regexp followed by one or two numbers indicating the row & column
       offset (relative to the current cell) of the cell to match the regexp against, e.g.
       (\"foo\" 1 1) = cell 1 row above and 1 column to the left of a cell containing \"foo\"
- - 4) A cons cell containing the line & column number to jump to. The car may be any expression
+ - 4. A cons cell containing the line & column number to jump to. The car may be any expression
       that evaluates to a number, and the cdr may be a number or symbol that evaluates to a number;
       e.g. (1 . 1) = top-left cell, ((1- numdlines) . numcols) = cell above bottom-right cell
       (note: you can also use the gotocell function described below).
- - 5) An sexp that evaluates to non-nil when the desired cell has been reached; this sexp may contain
+ - 5. An sexp that evaluates to non-nil when the desired cell has been reached; this sexp may contain
       previously mentioned keyword conditions (which will be replaced by their corresponding forms)
       and any of the functions and variables listed below,
       e.g: (and :empty (matchfield \"bar\" 1 0)) = empty cell above a cell containing \"bar\"
- - 6) A list whose first element is either & or | to indicate the logical conjunction/disjunction of
+ - 6. A list whose first element is either & or | to indicate the logical conjunction/disjunction of
       the subsequent elements. The subsequent elements may include any of the previously mentioned forms
       (keyword condition, regexp, cons cell, sexp) or recursive calls to &/|. For example:
       (& :empty (\"bar\" 1)) = empty cell above cell containing \"bar\"
       (| (& :empty \"bar\" 1) (& :nonempty (\"foo\" 0 -1)) (numdlines . numcols)) = same as previous match,
       but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
- - 7) A list containing the symbol `jmpseq' followed by a sequence of any of the previously mentioned items.
+ - 7. A list containing the symbol `jmpseq' followed by a sequence of any of the previously mentioned items.
       Each call to `org-table-jump-next' will jump to the next item in this sequence. For example:
       (jmpseq (& :empty \"bar\" 1) (& :nonempty \"foo\" 0 -1) (numdlines . numcols)) = first jump to the next
       empty cell above one containing \"bar\", then jump to the next non-empty cell to the right of one
@@ -1479,22 +1479,17 @@ You can also make use of the following variables:
     (:right . (gotocell nil numcols))
     (:hline-above . (hline-p -1))
     (:hline-below . (hline-p 1))
-    (:empty . (matchfield "^\\s-*$"))
-    (:nonempty . (matchfield "\\S-"))
+    (:empty . "^\\s-*$")
+    (:nonempty . "\\S-")
     (:empty-above . (and (not (hline-p -1))
 			 (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
     (:empty-below . (and (not (hline-p 1))
 			 (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
-    (:empty-left . (and (matchfield "\\S-")
-			(matchfield "^\\s-*$" 0 -1)))
-    (:empty-right . (and (matchfield "\\S-")
-			 (matchfield "^\\s-*$" 0 1)))
+    (:empty-left . (& "\\S-" ("^\\s-*$" 0 -1)))
+    (:empty-right . (& "\\S-" ("^\\s-*$" 0 1)))
     ("every other" . (> cellcount 1))
-    ("replace empty" . (and (matchfield "^\\s-*$")
-			    (setfield "-")))
-    ("replace empty (no prompt)" .
-     (and (matchfield "^\\s-*$")
-	  (setfield "-" 0 0 t)))
+    ("replace empty" . (& "^\\s-*$" (setfield "-")))
+    ("replace empty (no prompt)" . (& "^\\s-*$" (setfield "-" 0 0 t)))
     ("enter manually" . enter)
     ("edit preset" . edit))
   "Named presets for `org-table-jump-condition'.
@@ -1542,19 +1537,42 @@ in the minibuffer."
 				  org-table-jump-condition-presets)))
 		      (condition (if (string-match "^:" name)
 				     (intern-soft name)
-				   (cdr (assoc name org-table-jump-condition-presets)))))
-		 (list (if (memq condition '(enter edit))
-			   (read (read-string
-				  "Condition (sexp): "
-				  (when (eq condition 'edit)
-				    (prin1-to-string
-				     (cdr (assoc (completing-read
-						  "Preset: "
-						  (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
-							     org-table-jump-condition-presets))
-						 org-table-jump-condition-presets))))
-				  'org-table-jump-condition-history))
-			 condition))))
+				   (cdr (assoc name org-table-jump-condition-presets))))
+		      (helpbuf "*org-table-jump Help*")
+		      (jmpcndmsg (get 'org-table-jump-condition 'variable-documentation))
+		      (help-window-select t)
+		      (curbuf (current-buffer)))
+		 (list (if (not (memq condition '(enter edit)))
+			   condition
+			 (with-help-window helpbuf
+			   (princ (substitute-command-keys
+				   "Use \\[scroll-other-window-down] & \\[scroll-other-window] keys to scroll this window.\n
+The jump condition must take one of the following forms:\n\n"))
+			   (princ (substring jmpcndmsg (string-match "^ - 1\\." jmpcndmsg)
+					     (string-match "^ (field" jmpcndmsg)))
+			   (princ (mapconcat (lambda (x)
+					       (format "(%s %s) : %s" (symbol-name (caar x))
+						       (cadar x) (cdr x)))
+					     org-table-filter-function-bindings "\n"))
+			   (princ (concat "\n\nKeyword conditions:\n\n"
+					  (mapconcat (lambda (x) (format "%S = %S" (car x) (cdr x)))
+						     (--filter (keywordp (car it))
+							       org-table-jump-condition-presets)
+						     "\n"))))
+			 (condition-case nil
+			     (prog1 (read (read-string
+					   "Condition: "
+					   (when (eq condition 'edit)
+					     (prin1-to-string
+					      (cdr (assoc (completing-read
+							   "Preset: "
+							   (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
+								      org-table-jump-condition-presets))
+							  org-table-jump-condition-presets))))
+					   'org-table-jump-condition-history))
+			       (with-current-buffer helpbuf (kill-buffer-and-window))
+			       (set-buffer curbuf))
+			   ((quit error) (with-current-buffer helpbuf (kill-buffer-and-window))))))))
   (setcdr org-table-jump-condition (or (and (stringp condition)
 					    (cdr (assoc condition org-table-jump-condition-presets)))
 				       condition)))
@@ -1743,7 +1761,8 @@ Arguments LINE & COL are the position of the starting cell."
 (defun org-table-parse-jump-condition (jmpcnd)
   (pcase jmpcnd
     ((pred keywordp)
-     (cdr (assoc jmpcnd org-table-jump-condition-presets)))
+     (org-table-parse-jump-condition
+      (cdr (assoc jmpcnd org-table-jump-condition-presets))))
     ((pred stringp) `(matchfield ,jmpcnd))
     ((and (pred listp)
 	  (app car (pred stringp)))
