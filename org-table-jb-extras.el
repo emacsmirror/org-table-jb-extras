@@ -1434,7 +1434,8 @@ is left blank then they default to 0. Also note that cell refers to the position
  (getvar KEY) = get the value associated with KEY in `org-table-jump-state'.
  (setvar KEY VAL) = set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS) = return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
- (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.
+ (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current 
+   line/column. This should be called last since it loses track of the cell count.
 
 Be careful with functions that alter the table (e.g. setfield) only use them if your other jump conditions are satisfied 
 otherwise you may end up changing more than you want.
