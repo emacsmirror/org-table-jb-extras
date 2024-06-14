@@ -945,7 +945,7 @@ not used."
 					  (f2 (nth (1- col2) (nth (nth (1- line2) table-dlines) table))))
 				     (setf (nth (1- col) (nth (nth (1- line) table-dlines) table)) f2
 					   (nth (1- col2) (nth (nth (1- line2) table-dlines) table)) f1))))))
-     . "Move cell in direction DIR ('up/'down/'left/'right), swapping places with the cell already in that position.")
+     . "Swap current cell with neighbouring cell in direction DIR ('up/'down/'left/'right)")
     ((countcells (dir roffset coffset &rest regexs)
 		 (apply 'org-table-count-matching-fields
 			table table-dlines dir (+ currentline roffset) (+ currentcol coffset) numdlines numcols regexs))
@@ -1423,6 +1423,7 @@ is left blank then they default to 0. Also note that cell refers to the position
  (flatten NROWS NCOLS FUNC REPS) = a wrapper around `org-table-flatten-columns'.
  (hline-p ROFFSET) = test if the row at ROFFSET rows beneath the current one, counting hlines, is an hline (horizontal line).
  (addhline ROFFSET) = insert a horizontal line underneath current line + ROFFSET (returns non-nil)
+ (movecell DIR &optional ROFFSET COFFSET) = Swap current cell with neighbouring cell in direction DIR ('up/'down/'left/'right)
  (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset, 
   return a list containing counts of sequential matches to the 1st regexp, followed by the 2nd regexp, etc.
  (checkcounts COUNTS BOUNDS) = a wrapper around `org-table-check-bounds'.
