@@ -1467,7 +1467,10 @@ You can also make use of the following variables:
 
 ;; simple-call-tree-info: CHECK
 (defcustom org-table-jump-condition-presets
-  '(("1st<>last cell" . (jmpseq :first :last))
+  '(("load from #+TBLJMP" . load)
+    ("enter manually" . enter)
+    ("edit preset" . edit)
+    ("1st<>last cell" . (jmpseq :first :last))
     ("1st<>last row" . (jmpseq :top :bottom))
     ("1st<>last col" . (jmpseq :left :right))
     (:first . (gotocell 1 1))
@@ -1488,9 +1491,7 @@ You can also make use of the following variables:
     (:empty-right . (& "\\S-" ("^\\s-*$" 0 1)))
     ("every other" . (> cellcount 1))
     ("replace empty" . (& "^\\s-*$" (setfield "-")))
-    ("replace empty (no prompt)" . (& "^\\s-*$" (setfield "-" 0 0 t)))
-    ("enter manually" . enter)
-    ("edit preset" . edit))
+    ("replace empty (no prompt)" . (& "^\\s-*$" (setfield "-" 0 0 t))))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (KEY . SEXP) where KEY is either a keyword or a string description of the
 condition evaluated by SEXP. If it is a keyword then it may also be used instead of the corresponding
@@ -1541,37 +1542,39 @@ in the minibuffer."
 		      (jmpcndmsg (get 'org-table-jump-condition 'variable-documentation))
 		      (help-window-select t)
 		      (curbuf (current-buffer)))
-		 (list (if (not (memq condition '(enter edit)))
+		 (list (if (not (memq condition '(enter edit load)))
 			   condition
-			 (with-help-window helpbuf
-			   (princ (substitute-command-keys
-				   "Use \\[scroll-other-window-down] & \\[scroll-other-window] keys to scroll this window.\n
+			 (if (eq condition 'load)
+			     (org-table-get-stored-jump-condition)
+			   (with-help-window helpbuf
+			     (princ (substitute-command-keys
+				     "Use \\[scroll-other-window-down] & \\[scroll-other-window] keys to scroll this window.\n
 The jump condition must take one of the following forms:\n\n"))
-			   (princ (substring jmpcndmsg (string-match "^ - 1\\." jmpcndmsg)
-					     (string-match "^ (field" jmpcndmsg)))
-			   (princ (mapconcat (lambda (x)
-					       (format "(%s %s) : %s" (symbol-name (caar x))
-						       (cadar x) (cdr x)))
-					     org-table-filter-function-bindings "\n"))
-			   (princ (concat "\n\nKeyword conditions:\n\n"
-					  (mapconcat (lambda (x) (format "%S = %S" (car x) (cdr x)))
-						     (--filter (keywordp (car it))
-							       org-table-jump-condition-presets)
-						     "\n"))))
-			 (condition-case nil
-			     (prog1 (read (read-string
-					   "Condition: "
-					   (when (eq condition 'edit)
-					     (prin1-to-string
-					      (cdr (assoc (completing-read
-							   "Preset: "
-							   (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
-								      org-table-jump-condition-presets))
-							  org-table-jump-condition-presets))))
-					   'org-table-jump-condition-history))
-			       (with-current-buffer helpbuf (kill-buffer-and-window))
-			       (set-buffer curbuf))
-			   ((quit error) (with-current-buffer helpbuf (kill-buffer-and-window))))))))
+			     (princ (substring jmpcndmsg (string-match "^ - 1\\." jmpcndmsg)
+					       (string-match "^ (field" jmpcndmsg)))
+			     (princ (mapconcat (lambda (x)
+						 (format "(%s %s) : %s" (symbol-name (caar x))
+							 (cadar x) (cdr x)))
+					       org-table-filter-function-bindings "\n"))
+			     (princ (concat "\n\nKeyword conditions:\n\n"
+					    (mapconcat (lambda (x) (format "%S = %S" (car x) (cdr x)))
+						       (--filter (keywordp (car it))
+								 org-table-jump-condition-presets)
+						       "\n"))))
+			   (condition-case nil
+			       (prog1 (read (read-string
+					     "Condition: "
+					     (when (eq condition 'edit)
+					       (prin1-to-string
+						(cdr (assoc (completing-read
+							     "Preset: "
+							     (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
+									org-table-jump-condition-presets))
+							    org-table-jump-condition-presets))))
+					     'org-table-jump-condition-history))
+				 (with-current-buffer helpbuf (kill-buffer-and-window))
+				 (set-buffer curbuf))
+			     ((quit error) (with-current-buffer helpbuf (kill-buffer-and-window)))))))))
   (setcdr org-table-jump-condition (or (and (stringp condition)
 					    (cdr (assoc condition org-table-jump-condition-presets)))
 				       condition)))
