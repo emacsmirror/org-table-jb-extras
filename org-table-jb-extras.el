@@ -947,7 +947,7 @@ not used."
 				   (let* ((f1 (tablefield line col))
 					  (f2 (tablefield line2 col2)))
 				     (settablefield line col f2)
-				     (settablefield lin2 col2 f1))))))
+				     (settablefield line2 col2 f1))))))
      . "Swap current cell with neighbouring cell in direction DIR ('up/'down/'left/'right)")
     ((countcells (dir roffset coffset &rest regexs)
 		 (apply 'org-table-count-matching-fields
