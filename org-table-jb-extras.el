@@ -1530,7 +1530,10 @@ If CONDITION is a string or keyword select the corresponding condition from `org
 When called interactively prompt the user to select from `org-table-jump-condition-presets'.
 If the user chooses \"enter manually\" then they are prompted to enter an sexp, and if they
 choose \"edit preset\" then they are prompted to choose an existing condition and edit it
-in the minibuffer."
+in the minibuffer. If they choose \"load from #+TBLJMP\" then the condition will be loaded
+from a #+TBLJMP line at the bottom of the table. If the sexp following #+TBLJMP: is a cons
+cell whose car is one of left,right,up or down then that will be loaded as the direction, 
+and the cdr will be loaded as the condition."
   (interactive (let* ((name (and org-table-jump-condition-presets
 				 (completing-read
 				  (substitute-command-keys
@@ -1545,8 +1548,13 @@ in the minibuffer."
 		      (curbuf (current-buffer)))
 		 (list (if (not (memq condition '(enter edit load)))
 			   condition
-			 (if (eq condition 'load)
-			     (org-table-get-stored-jump-condition)
+			 (if (eq condition 'load) ;; when loading from table also set the direction
+			     (let ((pair (org-table-get-stored-jump-condition)))
+			       (if (or (not (consp pair))
+				       (not (memq (car pair) '(left right up down))))
+				   pair
+				 (setcar org-table-jump-condition (car pair))
+				 (cdr pair)))
 			   (with-help-window helpbuf
 			     (princ (substitute-command-keys
 				     "Use \\[scroll-other-window-down] & \\[scroll-other-window] keys to scroll this window.\n

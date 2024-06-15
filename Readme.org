@@ -43,7 +43,8 @@ These presets can be selected, altered, or you can define you own by either pres
 
 If you want to store a jump condition for reuse later you can customize *org-table-jump-condition-presets*.
 Alternatively you can store table specific jump conditions at the bottom of a table on a line that starts with "#+TBLJMP:".
-This line should come directly after the table and any "#+TBLFM:" lines.
+This line should come directly after the table and any "#+TBLFM:" lines, and may be either the condition alone, or a cons cell
+whose car is a direction (see below) and whose cdr is a condition.
 
 By default the table is searched row-by-row from left to right and top to bottom to find the next position to jump to.
 You can select the direction of search by using a double *C-u* prefix when calling *org-table-jump-next/org-table-jump-prev* or by
