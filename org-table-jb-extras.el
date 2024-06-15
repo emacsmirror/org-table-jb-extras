@@ -966,10 +966,26 @@ not used."
 	     "Set the value associated with KEY in `org-table-jump-state' to VAL, and return VAL.")
     ((checkvar (key &rest vals) (member (getvar key) vals)) .
      "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.")
-    ((gotocell (line &optional col) (org-table-goto-line (or line startline))
-	       (org-table-goto-column (or col startcol))
-	       (setq currentline (or line startline) currentcol (or col startcol)))
-     . "Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column."))
+    ((gotocell (line &optional col)
+	       (let ((line (or (and line (max 1 (min line numdlines))) startline))
+		     (col (or (and col (max 1 (min col numcols))) startcol)))
+		 (org-table-goto-line line)
+		 (org-table-goto-column col)
+		 (setq currentline line currentcol col)))
+     . "Jump immediately to cell in specified LINE & COL. If either arg is nil use the current line/column.")
+    ((forwardcell (roffset &optional coffset nowrap)
+		  (let* ((roffset (if roffset
+				      (if (>= steps 0) roffset (- roffset))
+				    0))
+			 (coffset (if coffset
+				      (if (>= steps 0) coffset (- coffset))
+				    0))
+			 (line (+ startline roffset))
+			 (col (+ startcol coffset)))
+		    (if nowrap (gotocell line col)
+		      (gotocell (1+ (mod (1- line) numdlines))
+				(1+ (mod (1- col) numcols))))))
+     . "Move to cell at offset given by ROFFSET & COFFSET. Wrap around table unless NOWRAP is non-nil."))
   "Function bindings (with descriptions) used by `org-table-jump-condition' & `org-dblock-write:tablefilter'.
 These function bindings can be used in the cdr of `org-table-jump-condition', or the :filter parameter of
 a tablefilter dynamic block. For :filter parameters the functions are created after the default row & column
