@@ -546,7 +546,8 @@ Return value is the sum of lengths of the text in the newly combined fields."
 					("Fill empty cells" . org-table-fill-empty-cells)
 					("Move current cell" . org-table-move-cell)
 					("Set jump condition" . org-table-set-jump-condition)
-					("Show table dimensions/info" . org-table-query-dimension))
+					("Show table dimensions/info" . org-table-query-dimension)
+					("Write jump condition under table" . org-table-write-jump-condition))
   "Actions that can be applied when `org-table-dispatch' is called.
 Each element should be of the form (NAME . FUNC) where NAME is a name for the action,
   and FUNC is a function with no non-optional args, or a lambda function of one argument. 
