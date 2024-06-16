@@ -558,7 +558,7 @@ Each element should be of the form (NAME . FUNC) where NAME is a name for the ac
 
 ;; TODO - do something similar for .csv files?
 ;;;###autoload
-;; simple-call-tree-info: DONE
+;; simple-call-tree-info: TODO use one-key-menu instead of ido-completing-read
 (defun org-table-dispatch nil
   "Do something with column(s) of org-table at point.
 Prompt the user for an action in `org-table-dispatch-actions' and apply the corresponding function.
@@ -1433,6 +1433,20 @@ The cdr can be either:
       (jmpseq (& :empty \"bar\" 1) (& :nonempty \"foo\" 0 -1) (numdlines . numcols)) = first jump to the next
       empty cell above one containing \"bar\", then jump to the next non-empty cell to the right of one
       containing \"foo\", then jump to the last cell, and repeat.
+ - 8. A list containing the symbol `jmpprefixes' followed by a mixture of any of the previously mentioned items,
+      and numbers 0-9. The item or sequence of items that come after a number, and preceeds the next number or
+      end of the list defines a condition or jump sequence that is assigned to the corresponding numeric prefix arg.
+      An item(s) at the beginning of the list that has no preceeding number, or is preceeded by 0, are assigned
+      as the default jump condition/sequence, and will be used when `org-table-jump-next' is called with no
+      numeric prefix arg or a prefix arg that doesn't match any of those listed. For example:
+
+      (jmpprefixes :empty 1 :nonempty 2 :top :bottom) 
+
+      This means; by default jump to the next empty cell, if a C-1 is pressed beforehand then jump to the next 
+      nonempty cell, and if C-2 is pressed toggle between the top & bottom lines of the table. 
+      If you want to use a numeric prefix to repeat a jump you can press the C-[0-9] keys as normal to specify
+      the number of repetitions, followed by the numeric prefix key for the jump condition/sequence that you
+      want to use, e.g. in the example above a numeric prefix of C-31 will repeat :nonempty 3 times.
 
 Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which by default includes
 the following functions. Many of these functions have optional ROFFSET & COFFSET args which refer to row & column 
@@ -1814,6 +1828,8 @@ Arguments LINE & COL are the position of the starting cell."
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-parse-jump-condition (jmpcnd)
+  "Parse JMPCND into form that can be evalled in `org-table-jump-next'.
+Depends upon dynamically bound variables; steps, matchcount, startline, startcol, currentline, currentcol."
   (pcase jmpcnd
     ((pred keywordp)
      (org-table-parse-jump-condition
@@ -1833,7 +1849,7 @@ Arguments LINE & COL are the position of the starting cell."
      `(,(case op (| 'or) (& 'and)) ,@(mapcar 'org-table-parse-jump-condition conds)))
     ((and (pred listp)
 	  (app cdr jmplst)
-	  (app car 'jmpseq))
+	  (app car 'jmpseq)) ;; jump sequences
      (let* ((jmpidx (alist-get 'jmpidx org-table-jump-state))
 	    (newjmpidx (if jmpidx
 			   (mod (if (> steps 0) (1+ jmpidx) (1- jmpidx))
@@ -1863,6 +1879,21 @@ Arguments LINE & COL are the position of the starting cell."
 		      nextcond)
 	       ;; add new position to history list
 	       '(pushvar (cons currentline currentcol) 'history)))))
+    ((and (pred listp)
+	  (app cdr jmplst)
+	  (app car 'jmpprefixes)) ;; jump prefix key definitions
+     (let* ((prefix (if (not (listp current-prefix-arg))
+			(mod (abs (prefix-numeric-value current-prefix-arg))
+			     10)
+		      0))
+	    (parts (-partition-before-pred 'numberp jmplst))
+	    (jmplst2 (alist-get prefix parts)))
+       (setq steps (* (signum steps) (max 1 (/ (- (abs steps) prefix) 10))))
+       (case (length jmplst2)
+	 (0 (org-table-parse-jump-condition
+	     (cons 'jmpseq (car (--remove (numberp (car it)) parts)))))
+	 (1 (org-table-parse-jump-condition (car jmplst2)))
+	 (t (org-table-parse-jump-condition (cons 'jmpseq jmplst2))))))
     (_ jmpcnd)))
 
 ;; simple-call-tree-info: DONE
@@ -1877,7 +1908,7 @@ or if \"enter manually\" or \"edit preset\" is chosen then a new one edited in t
 and if more than one \\[universal-argument] prefix is used also prompt for MOVEDIR. 
 In both these cases STEPS is set to 1."
   (interactive "p")
-  (let ((doprompt (and (not (null current-prefix-arg))
+  (let ((doprompt (and current-prefix-arg
 		       (listp current-prefix-arg))))
     (if stopcond (org-table-set-jump-condition stopcond)
       (if doprompt (call-interactively 'org-table-set-jump-condition)))
@@ -1969,8 +2000,9 @@ If no such line exists return nil."
 
 
 ;; IDEAS:
-;;    Have an option in org-table-set-jump-condition which selects the table specific jump condition, and a command to save
-;;    the current jump condition/sequence to the #+TBLJMP footer.
+;;    jump function to assign jump conditions/sequences to prefix keys,
+;;    e.g: (jmpprefixes 1 :top :bottom (gotocell 1 1) 2 (gotocell 1 1) 3 (forwardcell 1 2))
+
 
 (provide 'org-table-jb-extras)
 
