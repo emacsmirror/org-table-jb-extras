@@ -1642,7 +1642,7 @@ from the current value of `org-table-jump-condition'."
 	  (progn (search-forward "#+TBLJMP:")
 		 (kill-line))
 	(insert "#+TBLJMP:"))
-      (insert (concat " (" dirstr " . " condstr ")")))))
+      (insert (concat " (" dirstr " . " condstr ")\n")))))
 
 ;; simple-call-tree-info: TODO; fix documentation
 (defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
