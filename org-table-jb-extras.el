@@ -13,11 +13,11 @@
 ;; URL: https://github.com/vapniks/org-table-jb-extras
 ;; Keywords: tools 
 ;; Compatibility: GNU Emacs 25.2.2
-;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1") (dash "2.19.1") (s "1.13.1"))
+;; Package-Requires: ((org "9.4.6") (cl-lib "1") (ido-choose-function "0.1") (dash "2.19.1") (s "1.13.1") (datetime "0.10.2snapshot"))
 ;;
 ;; Features that might be required by this library:
 ;;
-;; org cl-lib ido-choose-function ampl-mode dash s 
+;; org cl-lib ido-choose-function ampl-mode dash s datetime
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -131,6 +131,7 @@
 (require 'ido-choose-function)
 (require 'dash)
 (require 's)
+(require 'datetime)
 (require 'ampl-mode nil t) ;; my version which contains `run-ampl-async'
 ;;; Code:
 
@@ -1806,12 +1807,35 @@ Arguments LINE & COL are the position of the starting cell."
     ((and (pred listp)
 	  (app cdr jmplst)
 	  (app car 'jmpseq))
-     (let* ((jmpidx (cdr (assoc 'jmpidx org-table-jump-state)))
+     (let* ((jmpidx (alist-get 'jmpidx org-table-jump-state))
 	    (newjmpidx (if jmpidx
-			   (if (> steps 0) (1+ jmpidx) (1- jmpidx))
-			 0)))
-       (setf (cdr (assoc 'jmpidx org-table-jump-state)) newjmpidx)
-       (org-table-parse-jump-condition (nth (mod newjmpidx (length jmplst)) jmplst))))
+			   (mod (if (> steps 0) (1+ jmpidx) (1- jmpidx))
+				(length jmplst))
+			 0))
+	    (nextcond (org-table-parse-jump-condition (nth newjmpidx jmplst))))
+       (setf (alist-get 'jmpidx org-table-jump-state) newjmpidx)
+       (if (< steps 0) ;; use jump history to navigate backwards if possible since it's more accurate
+	   (if (equal (cons startline startcol)
+		      (pop (alist-get 'history org-table-jump-state)))
+	       ;; don't pop the history on the last step, since we need to keep that
+	       ;; position to check if we've moved next time we press the jump key
+	       `(let ((pos (if (> (- (abs steps) matchcount) 1)
+			       (pop (alist-get 'history org-table-jump-state))
+			     (car (alist-get 'history org-table-jump-state)))))
+		  ;; goto previous position if steps is negative, and history is not empty
+		  ;; otherwise do previous jump type in opposite direction
+		  (if pos (gotocell (car pos) (cdr pos)) ,nextcond))
+	     ;; clear history if we've moved since last jump
+	     (setf (alist-get 'history org-table-jump-state) nil)
+	     nextcond)
+	 (list 'and
+	       (progn (when (not (equal (cons startline startcol)
+					(car (alist-get 'history org-table-jump-state))))
+			;; clear history if we've moved since last jump
+			(setf (alist-get 'history org-table-jump-state) (list (cons startline startcol))))
+		      nextcond)
+	       ;; add new position to history list
+	       '(push (cons currentline currentcol) (alist-get 'history org-table-jump-state))))))
     (_ jmpcnd)))
 
 ;; simple-call-tree-info: DONE
