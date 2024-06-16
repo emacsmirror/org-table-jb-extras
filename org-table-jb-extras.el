@@ -967,6 +967,10 @@ not used."
 	     "Set the value associated with KEY in `org-table-jump-state' to VAL, and return VAL.")
     ((checkvar (key &rest vals) (member (getvar key) vals)) .
      "Return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.")
+    ((pushvar (val key) (push val (alist-get key org-table-jump-state)))
+     . "Push VAL onto a list stored in `org-table-jump-state' under KEY.")
+    ((popvar (key) (pop (alist-get key org-table-jump-state)))
+     . "Pop a value from a list stored under KEY in `org-table-jump-state'.")
     ((gotocell (line &optional col)
 	       (let ((line (or (and line (max 1 (min line numdlines))) startline))
 		     (col (or (and col (max 1 (min col numcols))) startcol)))
@@ -1451,8 +1455,11 @@ is left blank then they default to 0. Also note that cell refers to the position
  (getvar KEY) = get the value associated with KEY in `org-table-jump-state'.
  (setvar KEY VAL) = set the value associated with KEY in `org-table-jump-state' to VAL.
  (checkvar KEY &rest VALS) = return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
+ (pushvar VAL KEY) = push VAL onto a list stored in `org-table-jump-state' under KEY.
+ (popvar KEY) = Pop a value from a list stored under KEY in `org-table-jump-state'.
  (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current 
    line/column. This should be called last since it loses track of the cell count.
+ (forwardcell ROFFSET &optional COFFSET NOWRAP) = Move to cell at given offset. Wrap around table unless NOWRAP is non-nil.
 
 Be careful with functions that alter the table (e.g. setfield) only use them if your other jump conditions are satisfied 
 otherwise you may end up changing more than you want.
@@ -1460,21 +1467,21 @@ getvar, setvar & checkvar are used for communicating state across invocations of
 used for creating more complex jump patterns.
 You can also make use of the following variables:
 
- table = the org-table as a list of lists (as returned by `org-table-to-lisp')
- table-dlines = list of indices of data lines in table
- table-hlines = list of indices of horizontal lines in table
- numdlines = the number of data lines in the table
- numhlines = the number of horizontal lines in the table
- numlines = numdlines + numhlines
- numcols = the number of columns
- currentcol = the current column number
- currentline = the current data line number (i.e. excluding horizontal lines)
- startcol = the column that point was in at the start
- startline = the data line number that point was in at the start
- movedir = the current direction of field traversal ('up,'down,'left or 'right)
- numcells = the total number of cells in the table
- cellcount = the number of cells checked so far
- startpos = the position of point before starting.")
+table = the org-table as a list of lists (as returned by `org-table-to-lisp')
+table-dlines = list of indices of data lines in table
+table-hlines = list of indices of horizontal lines in table
+numdlines = the number of data lines in the table
+numhlines = the number of horizontal lines in the table
+numlines = numdlines + numhlines
+numcols = the number of columns
+currentcol = the current column number
+currentline = the current data line number (i.e. excluding horizontal lines)
+startcol = the column that point was in at the start
+startline = the data line number that point was in at the start
+movedir = the current direction of field traversal ('up,'down,'left or 'right)
+numcells = the total number of cells in the table
+cellcount = the number of cells checked so far
+startpos = the position of point before starting.")
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
@@ -1820,8 +1827,8 @@ Arguments LINE & COL are the position of the starting cell."
 	       ;; don't pop the history on the last step, since we need to keep that
 	       ;; position to check if we've moved next time we press the jump key
 	       `(let ((pos (if (> (- (abs steps) matchcount) 1)
-			       (pop (alist-get 'history org-table-jump-state))
-			     (car (alist-get 'history org-table-jump-state)))))
+			       (popvar 'history)
+			     (car (getvar 'history)))))
 		  ;; goto previous position if steps is negative, and history is not empty
 		  ;; otherwise do previous jump type in opposite direction
 		  (if pos (gotocell (car pos) (cdr pos)) ,nextcond))
@@ -1835,7 +1842,7 @@ Arguments LINE & COL are the position of the starting cell."
 			(setf (alist-get 'history org-table-jump-state) (list (cons startline startcol))))
 		      nextcond)
 	       ;; add new position to history list
-	       '(push (cons currentline currentcol) (alist-get 'history org-table-jump-state))))))
+	       '(pushvar (cons currentline currentcol) 'history)))))
     (_ jmpcnd)))
 
 ;; simple-call-tree-info: DONE
