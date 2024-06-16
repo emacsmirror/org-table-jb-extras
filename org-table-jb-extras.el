@@ -1625,6 +1625,25 @@ When called interactively prompt the user to press a key for the DIRECTION."
 			 (t key)))))
   (setcar org-table-jump-condition direction))
 
+;; simple-call-tree-info: CHECK
+(defun org-table-write-jump-condition (&optional direction condition)
+  "Write the current jump DIRECTION & CONDITION after #+TBLJMP under the org-table at point.
+If DIRECTION & CONDITION args are supplied they will be used, otherwise they will be obtained 
+from the current value of `org-table-jump-condition'."
+  (interactive)
+  (let ((dirstr (format "%S" (or direction (car org-table-jump-condition))))
+	(condstr (format "%S" (or condition (cdr org-table-jump-condition)))))
+    (unless (org-at-table-p) (error "No org-table here"))
+    (goto-char (org-table-end))
+    (let ((case-fold-search t))
+      (while (looking-at "\\([ \t]*\n\\)*[ \t]*\\(#\\+TBLFM:\\)\\(.*\n?\\)")
+	(forward-line 1))
+      (if (looking-at "\\([ \t]*\n\\)*[ \t]*\\(#\\+TBLJMP:\\)\\(.*\n?\\)")
+	  (progn (search-forward "#+TBLJMP:")
+		 (kill-line))
+	(insert "#+TBLJMP:"))
+      (insert (concat " (" dirstr " . " condstr ")")))))
+
 ;; simple-call-tree-info: TODO; fix documentation
 (defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
   "Count fields in TABLE matching REGEXS sequentially in a given DIRECTION.
@@ -1949,8 +1968,6 @@ If no such line exists return nil."
 
 
 ;; IDEAS:
-;; - table specific jump sequences; stored in #+TBLJMP: footer and loaded automatically by new command `org-table-jump-default'
-;;    different conditions/sequences for different prefix keys.
 ;;    Have an option in org-table-set-jump-condition which selects the table specific jump condition, and a command to save
 ;;    the current jump condition/sequence to the #+TBLJMP footer.
 
