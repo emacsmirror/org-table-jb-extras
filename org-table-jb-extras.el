@@ -1414,12 +1414,14 @@ The cell will swap places with the one in the direction chosen."
  - 5. An sexp that evaluates to non-nil when the desired cell has been reached; this sexp may contain
       previously mentioned keyword conditions (which will be replaced by their corresponding forms)
       and any of the functions and variables listed below,
-      e.g: (and :empty (matchfield \"bar\" 1 0)) = empty cell above a cell containing \"bar\"
- - 6. A list whose first element is either & or | to indicate the logical conjunction/disjunction of
-      the subsequent elements. The subsequent elements may include any of the previously mentioned forms
-      (keyword condition, regexp, cons cell, sexp) or recursive calls to &/|. For example:
-      (& :empty (\"bar\" 1)) = empty cell above cell containing \"bar\"
-      (| (& :empty \"bar\" 1) (& :nonempty (\"foo\" 0 -1)) (numdlines . numcols)) = same as previous match,
+      e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
+ - 6. A list containing any of the previously mentioned items separated by & (AND) and | (OR)
+      symbols. This represents a logical combination of the items with & having higher precedence
+      than | (i.e. its in disjunctive normal form). The & symbols can be omitted since adjacent items
+      are assumed to be in the same conjunction, but may be included for clarity.
+      For example:
+      (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
+      (:empty (\"bar\" 1) | :nonempty (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
       but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
  - 7. A list containing the symbol `jmpseq' followed by a sequence of any of the previously mentioned items.
       Each call to `org-table-jump-next' will jump to the next item in this sequence. For example:
@@ -1844,16 +1846,11 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 	  (app cdr col)	;; cell coordinates
 	  (guard (and col (or (symbolp col) (integerp col)))))
      `(gotocell ,(car jmpcnd) ,col))
-    ;; ((and (pred listp)
-    ;; 	  lst
-    ;; 	  (guard (memq lst '(& |)))) ;; conjunctions & disjunctions
-    ;;  (cons 'or (--map (cons 'and (mapcar 'org-table-parse-jump-condition (cl-remove '& it)))
-    ;; 		      (-split-on '| lst))))
     ((and (pred listp)
-    	  (app car op)
-    	  (app cdr conds)
-    	  (guard (memq op '(& |)))) ;; conjunctions & disjunctions
-     `(,(case op (| 'or) (& 'and)) ,@(mapcar 'org-table-parse-jump-condition conds)))
+	  lst
+	  (guard (cl-intersection '(& |) lst))) ;; conjunctions & disjunctions
+     (cons 'or (--map (cons 'and (mapcar 'org-table-parse-jump-condition (cl-remove '& it)))
+		      (-split-on '| lst))))
     ((and (pred listp)
 	  (app car 'jmpseq) ;; jump sequences
 	  (app cdr jmplst))
