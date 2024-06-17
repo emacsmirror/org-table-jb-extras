@@ -1843,11 +1843,8 @@ Arguments LINE & COL are the position of the starting cell."
   "Parse JMPCND into form that can be evalled in `org-table-jump-next'.
 Depends upon dynamically bound variables; steps, matchcount, startline, startcol, currentline, currentcol."
   (pcase jmpcnd
-    ((or (and (pred keywordp) keywd) ;; predefined keyword conditions
-	 (and (pred listp)
-	      (app cdr 'nil) ;;check that list has length 1
-	      (app car (and (pred keywordp) keywd))))
-     (org-table-parse-jump-condition (cdr (assoc keywd org-table-jump-condition-presets))))
+    ((pred keywordp) ;; preset keyword conditions
+     (org-table-parse-jump-condition (cdr (assoc jmpcnd org-table-jump-condition-presets))))
     ((and (pred listp) ;; jump sequences
 	  lst
 	  (guard (memq '-> lst)))
@@ -1881,9 +1878,21 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 		      nextcond)
 	       ;; add new position to history list
 	       '(pushvar (cons currentline currentcol) 'history)))))
-    ((and (pred listp) ;; conjunctions & disjunctions
+    ((or (and (pred stringp) ;; field regexp matches
+	      (let args (list jmpcnd)))
+	 (and (pred listp) ;; offset field regexp matches
+	      (app car (pred stringp))
+	      (app cadr (or (pred integerp)
+			    (pred null)))
+	      args
+	      (guard (and (<= (length args) 3)))))
+     `(matchfield ,@args))
+    ((and (pred listp) ;; conjunctions & disjunctions (must come after offset field regexp matches)
 	  lst
-	  (guard (cl-intersection '(& |) lst)))
+	  (or (guard (cl-intersection '(& |) lst))
+	      (app car (or (pred stringp)
+			   (pred keywordp)
+			   (pred listp)))))
      (let ((orparts (--map (let ((andparts (mapcar 'org-table-parse-jump-condition
 						   (cl-remove '& it))))
 			     (if (> (length andparts) 1)
@@ -1893,12 +1902,6 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
        (if (> (length orparts) 1)
 	   (cons 'or orparts)
 	 (car orparts))))
-    ((pred stringp) `(matchfield ,jmpcnd)) ;; field regexp matches
-    ((and (pred listp) ;; offset field regexp matches
-	  (app car (pred stringp))
-	  args
-	  (guard (<= (length args) 3)))
-     `(matchfield ,@args))
     ((and (pred consp)	;; cell coordinates
 	  (app cdr col)
 	  (guard (and col (or (symbolp col) (integerp col)))))
