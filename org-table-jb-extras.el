@@ -1417,9 +1417,10 @@ The cell will swap places with the one in the direction chosen."
       e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
  - 6. A list containing any of the previously mentioned items separated by & (AND) and | (OR)
       symbols. This represents a logical combination of the items with & having higher precedence
-      than | (i.e. its in disjunctive normal form). The & symbols can be omitted since adjacent items
-      are assumed to be in the same conjunction, but may be included for clarity.
-      For example:
+      than | (i.e. its in disjunctive normal form). The & symbols can mostly be omitted since adjacent
+      items are assumed to be in the same conjunction, but at least of of &/| must be in the list for
+      it to be recognized as a logical combination.
+      Examples:
       (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
       (:empty (\"bar\" 1) | :nonempty (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
       but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
@@ -1840,17 +1841,17 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
       (cdr (assoc jmpcnd org-table-jump-condition-presets))))
     ((pred stringp) `(matchfield ,jmpcnd))
     ((and (pred listp)
+	  lst
+	  (guard (cl-intersection '(& |) lst))) ;; conjunctions & disjunctions
+     (cons 'or (--map (cons 'and (mapcar 'org-table-parse-jump-condition (cl-remove '& it)))
+		      (-split-on '| lst))))
+    ((and (pred listp)
 	  (app car (pred stringp))) ;; field regexp matches
      `(matchfield ,@jmpcnd))
     ((and (pred consp)
 	  (app cdr col)	;; cell coordinates
 	  (guard (and col (or (symbolp col) (integerp col)))))
      `(gotocell ,(car jmpcnd) ,col))
-    ((and (pred listp)
-	  lst
-	  (guard (cl-intersection '(& |) lst))) ;; conjunctions & disjunctions
-     (cons 'or (--map (cons 'and (mapcar 'org-table-parse-jump-condition (cl-remove '& it)))
-		      (-split-on '| lst))))
     ((and (pred listp)
 	  (app car 'jmpseq) ;; jump sequences
 	  (app cdr jmplst))
