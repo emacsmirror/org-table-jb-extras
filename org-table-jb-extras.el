@@ -1418,17 +1418,24 @@ The cell will swap places with the one in the direction chosen."
  - 6. A list containing any of the previously mentioned items separated by & (AND) and | (OR)
       symbols. This represents a logical combination of the items with & having higher precedence
       than | (i.e. its in disjunctive normal form). The & symbols can mostly be omitted since adjacent
-      items are assumed to be in the same conjunction, but at least of of &/| must be in the list for
+      items are assumed to be in the same conjunction, but at least one of &/| must be in the list for
       it to be recognized as a logical combination.
       Examples:
       (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
       (:empty (\"bar\" 1) | :nonempty (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
       but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
- - 7. A list containing the symbol `jmpseq' followed by a sequence of any of the previously mentioned items.
-      Each call to `org-table-jump-next' will jump to the next item in this sequence. For example:
-      (jmpseq (& :empty \"bar\" 1) (& :nonempty \"foo\" 0 -1) (numdlines . numcols)) = first jump to the next
-      empty cell above one containing \"bar\", then jump to the next non-empty cell to the right of one
-      containing \"foo\", then jump to the last cell, and repeat.
+ - 7. A list of any of the previously mentioned items separated by -> symbols. Each part defines a 
+      particular jump, and these jumps are performed sequentially on successive applications of
+      `org-table-jump-next'. Logical combinations (see 6) between -> symbols do not need to be parenthesized,
+      but you must make sure to include at least one & or | symbols so they are recognized as such. 
+      The sequence of cells visited is memorized so that if `org-table-jump-prev' is executed directly after
+      a sequence of applications of `org-table-jump-next' then the exact same cells are visited in reverse order.
+      If point has moved to a different cell between calls to `org-table-jump-next' and `org-table-jump-prev',
+      then the sequence of jumps will be performed in reverse order and with reverse search direcion, but 
+      different cells will be visited. 
+      Example: (:empty & (\"bar\" 1) -> :nonempty & (\"foo\" 0 -1) -> (numdlines . numcols))
+      This will first jump to the next empty cell above one containing \"bar\", then jump to the next non-empty 
+      cell to the right of one containing \"foo\", then jump to the last cell, and repeat.
  - 8. A list containing the symbol `jmpprefixes' followed by a mixture of any of the previously mentioned items,
       and numbers 0-9. The item or sequence of items that come after a number, and preceeds the next number or
       end of the list defines a condition or jump sequence that is assigned to the corresponding numeric prefix arg.
@@ -1836,26 +1843,16 @@ Arguments LINE & COL are the position of the starting cell."
   "Parse JMPCND into form that can be evalled in `org-table-jump-next'.
 Depends upon dynamically bound variables; steps, matchcount, startline, startcol, currentline, currentcol."
   (pcase jmpcnd
-    ((pred keywordp) ;; predefined keyword conditions
-     (org-table-parse-jump-condition
-      (cdr (assoc jmpcnd org-table-jump-condition-presets))))
-    ((pred stringp) `(matchfield ,jmpcnd))
-    ((and (pred listp)
+    ((or (and (pred keywordp) keywd) ;; predefined keyword conditions
+	 (and (pred listp)
+	      (app cdr 'nil) ;;check that list has length 1
+	      (app car (and (pred keywordp) keywd))))
+     (org-table-parse-jump-condition (cdr (assoc keywd org-table-jump-condition-presets))))
+    ((and (pred listp) ;; jump sequences
 	  lst
-	  (guard (cl-intersection '(& |) lst))) ;; conjunctions & disjunctions
-     (cons 'or (--map (cons 'and (mapcar 'org-table-parse-jump-condition (cl-remove '& it)))
-		      (-split-on '| lst))))
-    ((and (pred listp)
-	  (app car (pred stringp))) ;; field regexp matches
-     `(matchfield ,@jmpcnd))
-    ((and (pred consp)
-	  (app cdr col)	;; cell coordinates
-	  (guard (and col (or (symbolp col) (integerp col)))))
-     `(gotocell ,(car jmpcnd) ,col))
-    ((and (pred listp)
-	  (app car 'jmpseq) ;; jump sequences
-	  (app cdr jmplst))
-     (let* ((jmpidx (alist-get 'jmpidx org-table-jump-state))
+	  (guard (memq '-> lst)))
+     (let* ((jmplst (-split-on '-> lst))
+	    (jmpidx (alist-get 'jmpidx org-table-jump-state))
 	    (newjmpidx (if jmpidx
 			   (mod (if (> steps 0) (1+ jmpidx) (1- jmpidx))
 				(length jmplst))
@@ -1884,8 +1881,30 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 		      nextcond)
 	       ;; add new position to history list
 	       '(pushvar (cons currentline currentcol) 'history)))))
-    ((and (pred listp)
-	  (app car 'jmpprefixes) ;; jump prefix key definitions
+    ((and (pred listp) ;; conjunctions & disjunctions
+	  lst
+	  (guard (cl-intersection '(& |) lst)))
+     (let ((orparts (--map (let ((andparts (mapcar 'org-table-parse-jump-condition
+						   (cl-remove '& it))))
+			     (if (> (length andparts) 1)
+				 (cons 'and andparts)
+			       (car andparts)))
+			   (-split-on '| lst))))
+       (if (> (length orparts) 1)
+	   (cons 'or orparts)
+	 (car orparts))))
+    ((pred stringp) `(matchfield ,jmpcnd)) ;; field regexp matches
+    ((and (pred listp) ;; offset field regexp matches
+	  (app car (pred stringp))
+	  args
+	  (guard (<= (length args) 3)))
+     `(matchfield ,@args))
+    ((and (pred consp)	;; cell coordinates
+	  (app cdr col)
+	  (guard (and col (or (symbolp col) (integerp col)))))
+     `(gotocell ,(car jmpcnd) ,col))
+    ((and (pred listp) ;; jump prefix key definitions
+	  (app car 'jmpprefixes)
 	  (app cdr jmplst))
      (let* ((prefix (if (not (listp current-prefix-arg))
 			(mod (abs (prefix-numeric-value current-prefix-arg))
