@@ -1826,7 +1826,7 @@ Arguments LINE & COL are the position of the starting cell."
 		    (org-table-goto-column col)
 		    (org-table-flatten-columns nrows ncols func reps))))
 
-;; simple-call-tree-info: CHECK
+;; simple-call-tree-info: TODO use -split-on & -partition-before-pred to create better dsl
 (defun org-table-parse-jump-condition (jmpcnd)
   "Parse JMPCND into form that can be evalled in `org-table-jump-next'.
 Depends upon dynamically bound variables; steps, matchcount, startline, startcol, currentline, currentcol."
@@ -1839,17 +1839,17 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 	  (app car (pred stringp)))
      `(matchfield ,@jmpcnd))
     ((and (pred consp)
-	  (app cdr (pred (lambda (x)
-			   (and (funcall (-orfn 'symbolp 'integerp) x) x)))))
-     `(gotocell ,(car jmpcnd) ,(cdr jmpcnd)))
+	  (app cdr col)
+	  (guard (and col (or (symbolp col) (integerp col)))))
+     `(gotocell ,(car jmpcnd) ,col))
     ((and (pred listp)
 	  (app car op)
 	  (app cdr conds)
-	  (app car (or '& '|)))
+	  (guard (memq op '(& |))))
      `(,(case op (| 'or) (& 'and)) ,@(mapcar 'org-table-parse-jump-condition conds)))
     ((and (pred listp)
-	  (app cdr jmplst)
-	  (app car 'jmpseq)) ;; jump sequences
+	  (app car 'jmpseq)
+	  (app cdr jmplst)) ;; jump sequences
      (let* ((jmpidx (alist-get 'jmpidx org-table-jump-state))
 	    (newjmpidx (if jmpidx
 			   (mod (if (> steps 0) (1+ jmpidx) (1- jmpidx))
@@ -1880,8 +1880,8 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 	       ;; add new position to history list
 	       '(pushvar (cons currentline currentcol) 'history)))))
     ((and (pred listp)
-	  (app cdr jmplst)
-	  (app car 'jmpprefixes)) ;; jump prefix key definitions
+	  (app car 'jmpprefixes)
+	  (app cdr jmplst)) ;; jump prefix key definitions
      (let* ((prefix (if (not (listp current-prefix-arg))
 			(mod (abs (prefix-numeric-value current-prefix-arg))
 			     10)
@@ -1997,12 +1997,6 @@ If no such line exists return nil."
     (let ((case-fold-search t))
       (when (looking-at "\\(?:[ \t]*\n\\)*[ \t]*\\(?:#\\+TBLFM:.*\n\\)*#\\+TBLJMP: *\\(.*\\)")
 	(read (match-string-no-properties 1))))))
-
-
-;; IDEAS:
-;;    jump function to assign jump conditions/sequences to prefix keys,
-;;    e.g: (jmpprefixes 1 :top :bottom (gotocell 1 1) 2 (gotocell 1 1) 3 (forwardcell 1 2))
-
 
 (provide 'org-table-jb-extras)
 
