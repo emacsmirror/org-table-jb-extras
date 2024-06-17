@@ -1398,17 +1398,10 @@ The cell will swap places with the one in the direction chosen."
   (org-table--move-cell (intern (completing-read "Direction: " '("up" "down" "left" "right"))))
   (org-table-align))
 
-;; simple-call-tree-info: DONE
-(defvar org-table-jump-condition (cons 'right t)
-  "Cons cell used by `org-table-jump-next' to determine next cell to jump to.
-
-The car should be a symbol to specify the direction of traversal across the org-table:
-  - up/down : move up/down the current column & then to the next column on the left/right
-  - left/right move left/right across the current row & then to the next row up/down.
-
-The cdr can be either:
-
- - 1. A keyword matching an element of `org-table-jump-condition-presets', e.g. :empty
+;; Defining this in a separate variable instead of a docstring ensures its available even in compiled code.
+;; simple-call-tree-info: TODO 
+(defvar org-table-jump-documentation
+  " - 1. A keyword matching an element of `org-table-jump-condition-presets', e.g. :empty
       (called a \"keyword condition\" in the following text).
  - 2. A regexp for matching the contents of the desired cell, e.g. \"foo\".
  - 3. A list containing a regexp followed by one or two numbers indicating the row & column
@@ -1440,16 +1433,16 @@ The cdr can be either:
       as the default jump condition/sequence, and will be used when `org-table-jump-next' is called with no
       numeric prefix arg or a prefix arg that doesn't match any of those listed. For example:
 
-      (jmpprefixes :empty 1 :nonempty 2 :top :bottom) 
+      (jmpprefixes :empty 1 :nonempty 2 :top :bottom)
 
-      This means; by default jump to the next empty cell, if a C-1 is pressed beforehand then jump to the next 
-      nonempty cell, and if C-2 is pressed toggle between the top & bottom lines of the table. 
+      This means; by default jump to the next empty cell, if a C-1 is pressed beforehand then jump to the next
+      nonempty cell, and if C-2 is pressed toggle between the top & bottom lines of the table.
       If you want to use a numeric prefix to repeat a jump you can press the C-[0-9] keys as normal to specify
       the number of repetitions, followed by the numeric prefix key for the jump condition/sequence that you
       want to use, e.g. in the example above a numeric prefix of C-31 will repeat :nonempty 3 times.
 
 Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which by default includes
-the following functions. Many of these functions have optional ROFFSET & COFFSET args which refer to row & column 
+the following functions. Many of these functions have optional ROFFSET & COFFSET args which refer to row & column
 offsets from the current cell, and allow you to act on cells neighbouring the current one. If ROFFSET or COFFSET
 is left blank then they default to 0. Also note that cell refers to the position in a table and field to its contents.
 
@@ -1463,7 +1456,7 @@ is left blank then they default to 0. Also note that cell refers to the position
  (hline-p ROFFSET) = test if the row at ROFFSET rows beneath the current one, counting hlines, is an hline (horizontal line).
  (addhline ROFFSET) = insert a horizontal line underneath current line + ROFFSET (returns non-nil)
  (movecell DIR &optional ROFFSET COFFSET) = Swap current cell with neighbouring cell in direction DIR ('up/'down/'left/'right)
- (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset, 
+ (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset,
   return a list containing counts of sequential matches to the 1st regexp, followed by the 2nd regexp, etc.
  (checkcounts COUNTS BOUNDS) = a wrapper around `org-table-check-bounds'.
  (sumcounts DIR ROFFSET COFFSET &rest REGEXS) = similar to countcells but returns total No. of matches.
@@ -1472,11 +1465,11 @@ is left blank then they default to 0. Also note that cell refers to the position
  (checkvar KEY &rest VALS) = return t if value associated with KEY in `org-table-jump-state' is among VALS, and nil otherwise.
  (pushvar VAL KEY) = push VAL onto a list stored in `org-table-jump-state' under KEY.
  (popvar KEY) = Pop a value from a list stored under KEY in `org-table-jump-state'.
- (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current 
+ (gotocell LINE &optional COL) = Jump immediately to cell in specified LINE & COL. If either arg is nil use the current
    line/column. This should be called last since it loses track of the cell count.
  (forwardcell ROFFSET &optional COFFSET NOWRAP) = Move to cell at given offset. Wrap around table unless NOWRAP is non-nil.
 
-Be careful with functions that alter the table (e.g. setfield) only use them if your other jump conditions are satisfied 
+Be careful with functions that alter the table (e.g. setfield) only use them if your other jump conditions are satisfied
 otherwise you may end up changing more than you want.
 getvar, setvar & checkvar are used for communicating state across invocations of `org-table-jump-next', which can be
 used for creating more complex jump patterns.
@@ -1497,6 +1490,16 @@ movedir = the current direction of field traversal ('up,'down,'left or 'right)
 numcells = the total number of cells in the table
 cellcount = the number of cells checked so far
 startpos = the position of point before starting.")
+
+;; simple-call-tree-info: DONE
+(defvar org-table-jump-condition (cons 'right t)
+  (concat "Cons cell used by `org-table-jump-next' to determine next cell to jump to.
+
+The car should be a symbol to specify the direction of traversal across the org-table:
+  - up/down : move up/down the current column & then to the next column on the left/right
+  - left/right move left/right across the current row & then to the next row up/down.
+
+The cdr can take the following form:\n\n"  org-table-jump-documentation))
 
 ;; simple-call-tree-info: DONE
 (defvar org-table-jump-condition-history nil
@@ -1582,7 +1585,6 @@ and the cdr will be loaded as the condition."
 				     (intern-soft name)
 				   (cdr (assoc name org-table-jump-condition-presets))))
 		      (helpbuf "*org-table-jump Help*")
-		      (jmpcndmsg (get 'org-table-jump-condition 'variable-documentation))
 		      (help-window-select t)
 		      (curbuf (current-buffer)))
 		 (list (if (not (memq condition '(enter edit load)))
@@ -1598,8 +1600,8 @@ and the cdr will be loaded as the condition."
 			     (princ (substitute-command-keys
 				     "Use \\[scroll-other-window-down] & \\[scroll-other-window] keys to scroll this window.\n
 The jump condition must take one of the following forms:\n\n"))
-			     (princ (substring jmpcndmsg (string-match "^ - 1\\." jmpcndmsg)
-					       (string-match "^ (field" jmpcndmsg)))
+			     (princ (substring org-table-jump-documentation
+					       0 (string-match "^ (field" org-table-jump-documentation)))
 			     (princ (mapconcat (lambda (x)
 						 (format "(%s %s) : %s" (symbol-name (caar x))
 							 (cadar x) (cdr x)))
@@ -1831,25 +1833,30 @@ Arguments LINE & COL are the position of the starting cell."
   "Parse JMPCND into form that can be evalled in `org-table-jump-next'.
 Depends upon dynamically bound variables; steps, matchcount, startline, startcol, currentline, currentcol."
   (pcase jmpcnd
-    ((pred keywordp)
+    ((pred keywordp) ;; predefined keyword conditions
      (org-table-parse-jump-condition
       (cdr (assoc jmpcnd org-table-jump-condition-presets))))
     ((pred stringp) `(matchfield ,jmpcnd))
     ((and (pred listp)
-	  (app car (pred stringp)))
+	  (app car (pred stringp))) ;; field regexp matches
      `(matchfield ,@jmpcnd))
     ((and (pred consp)
-	  (app cdr col)
+	  (app cdr col)	;; cell coordinates
 	  (guard (and col (or (symbolp col) (integerp col)))))
      `(gotocell ,(car jmpcnd) ,col))
+    ;; ((and (pred listp)
+    ;; 	  lst
+    ;; 	  (guard (memq lst '(& |)))) ;; conjunctions & disjunctions
+    ;;  (cons 'or (--map (cons 'and (mapcar 'org-table-parse-jump-condition (cl-remove '& it)))
+    ;; 		      (-split-on '| lst))))
     ((and (pred listp)
-	  (app car op)
-	  (app cdr conds)
-	  (guard (memq op '(& |))))
+    	  (app car op)
+    	  (app cdr conds)
+    	  (guard (memq op '(& |)))) ;; conjunctions & disjunctions
      `(,(case op (| 'or) (& 'and)) ,@(mapcar 'org-table-parse-jump-condition conds)))
     ((and (pred listp)
-	  (app car 'jmpseq)
-	  (app cdr jmplst)) ;; jump sequences
+	  (app car 'jmpseq) ;; jump sequences
+	  (app cdr jmplst))
      (let* ((jmpidx (alist-get 'jmpidx org-table-jump-state))
 	    (newjmpidx (if jmpidx
 			   (mod (if (> steps 0) (1+ jmpidx) (1- jmpidx))
@@ -1880,8 +1887,8 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 	       ;; add new position to history list
 	       '(pushvar (cons currentline currentcol) 'history)))))
     ((and (pred listp)
-	  (app car 'jmpprefixes)
-	  (app cdr jmplst)) ;; jump prefix key definitions
+	  (app car 'jmpprefixes) ;; jump prefix key definitions
+	  (app cdr jmplst))
      (let* ((prefix (if (not (listp current-prefix-arg))
 			(mod (abs (prefix-numeric-value current-prefix-arg))
 			     10)
