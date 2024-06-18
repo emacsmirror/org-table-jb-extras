@@ -558,7 +558,7 @@ Each element should be of the form (NAME . FUNC) where NAME is a name for the ac
 
 ;; TODO - do something similar for .csv files?
 ;;;###autoload
-;; simple-call-tree-info: TODO use one-key-menu instead of ido-completing-read
+;; simple-call-tree-info: TODO use one-key-menu or make-help-screen instead of ido-completing-read
 (defun org-table-dispatch nil
   "Do something with column(s) of org-table at point.
 Prompt the user for an action in `org-table-dispatch-actions' and apply the corresponding function.
@@ -1575,7 +1575,7 @@ The SEXP may make use of functions defined in `org-table-filter-function-binding
 						   (length msg)
 						   10)))))
 
-;; simple-call-tree-info: TODO make selection using one-key instead of completing-read?
+;; simple-call-tree-info: TODO make selection using one-key or make-help-screen instead of completing-read?
 (defun org-table-set-jump-condition (condition)
   "Set the CONDITION for `org-table-jump-condition'.
 If CONDITION is a string or keyword select the corresponding condition from `org-table-jump-condition-presets'.
@@ -1632,9 +1632,12 @@ The jump condition must take one of the following forms:\n\n"))
 									org-table-jump-condition-presets))
 							    org-table-jump-condition-presets))))
 					     'org-table-jump-condition-history))
-				 (with-current-buffer helpbuf (kill-buffer-and-window))
+				 (delete-windows-on helpbuf)
+				 (bury-buffer helpbuf)
 				 (set-buffer curbuf))
-			     ((quit error) (with-current-buffer helpbuf (kill-buffer-and-window)))))))))
+			     ((quit error)
+			      (delete-windows-on helpbuf)
+			      (bury-buffer helpbuf))))))))
   (setf (alist-get 'jmpidx org-table-jump-state) 0
 	(alist-get 'history org-table-jump-state) nil
 	(alist-get 'seqlens org-table-jump-state) nil)

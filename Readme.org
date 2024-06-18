@@ -52,6 +52,12 @@ The DSL allows the use of logical operators & (AND) | (OR) for combining conditi
 sequences of different jump conditions that are traversed on successive applications of *org-table-jump-next* (see below).
 It can also make use of special functions defined in *org-table-filter-function-bindings*, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
+Example:
+#+BEGIN_SRC emacs-lisp 
+"foo" & ("bar" 1) | (> (sumcounts 'down 0 0 "\\S-" "^\\s-*$") 5)
+#+END_SRC
+This will jump to the next cell that contains "foo" above a cell containing "bar", OR the next cell with more than 4 empty cells beneath it, whichever comes first.
+
 A detailed description of the DSL & special functions is given in the docstring for *org-table-jump-condition* which is displayed in a help window when entering a jump condition manually.
 *** Prefix keys
 Normally a numeric prefix of N to *org-table-jump-next* or *org-table-jump-prev* has the effect of repeating the jump N times.
@@ -77,10 +83,10 @@ You can also add jump conditions to *org-table-jump-condition-presets* and give 
 Alternatively you can store table specific jump conditions at the bottom of a table on a line that starts with *#+TBLJMP:*.
 This line should come directly after the table and any *#+TBLFM:* lines, and may be either the condition alone, or a cons cell
 whose car is a direction (see below) and whose cdr is a condition.
-*** Example
+*** Table manipulation examples
 The following jump condition will flatten cells to the right of empty ones, and then put a horizontal line under them.
 #+BEGIN_SRC emacs-lisp
- #+TBLJMP: ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
+("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
 #+END_SRC
 
 When applied to the following table:
@@ -92,6 +98,18 @@ You should get a table that looks like this one:
 | foo | bar choo zoo |
 |-----+--------------|
 | aaa | bbb          |
+
+
+
+#+BEGIN_SRC emacs-lisp
+()
+#+END_SRC
+
+| 18/06/2024 | 1.23 |
+| 04/10/2023 | 4.45 |
+| 12/09/2022 | 0.01 |
+| 20/11/2021 | 8.2  |
+
 
 You can see that once defined, jump conditions allow you to perform complex table manipulations easily. When used in combination with keyboard macros even more is possible.
 *** Jump sequences
