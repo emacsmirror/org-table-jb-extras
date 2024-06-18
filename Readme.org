@@ -84,7 +84,9 @@ To use it, put point in the first cell of the org-table, do *C-u M-x org-table-j
 |     | zoo  |
 | aaa | bbb  |
 #+TBLJMP: ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
-*#+TBLJMP: ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))*
+#+BEGIN_SRC emacs-lisp
+ #+TBLJMP: ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
+#+END_SRC
 
 You should get a table that looks like this one:
 | foo | bar choo zoo |
