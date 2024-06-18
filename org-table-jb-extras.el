@@ -1401,30 +1401,29 @@ The cell will swap places with the one in the direction chosen."
 ;; Defining this in a separate variable instead of a docstring ensures its available even in compiled code.
 ;; simple-call-tree-info: TODO 
 (defvar org-table-jump-documentation
-  " - 1. A keyword matching an element of `org-table-jump-condition-presets', e.g. :empty
-      (called a \"keyword condition\" in the following text).
- - 2. A regexp for matching the contents of the desired cell, e.g. \"foo\".
- - 3. A list containing a regexp followed by one or two numbers indicating the row & column
-      offset (relative to the current cell) of the cell to match the regexp against, e.g.
+  " - 1. A keyword condition; i.e. a keyword matching an element of `org-table-jump-condition-presets', 
+      e.g. :empty
+ - 2. A regexp match; i.e. a regexp for matching the contents of the desired cell, e.g. \"foo\".
+ - 3. An offset regexp match; i.e. a list containing a regexp followed by one or two numbers indicating 
+      the row & column offset (relative to the current cell) of the cell to match the regexp against, e.g.
       (\"foo\" 1 1) = cell 1 row above and 1 column to the left of a cell containing \"foo\"
- - 4. A cons cell containing the line & column number to jump to. The car may be any expression
-      that evaluates to a number, and the cdr may be a number or symbol that evaluates to a number;
+ - 4. A cell position; i.e. a cons cell containing the line & column number to jump to. The car may be any 
+      expression that evaluates to a number, and the cdr may be a number or symbol that evaluates to a number;
       e.g. (1 . 1) = top-left cell, ((1- numdlines) . numcols) = cell above bottom-right cell
       (note: you can also use the gotocell function described below).
  - 5. An sexp that evaluates to non-nil when the desired cell has been reached; this sexp may contain
       previously mentioned keyword conditions (which will be replaced by their corresponding forms)
       and any of the functions and variables listed below,
       e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
- - 6. A list containing any of the previously mentioned items separated by & (AND) and | (OR)
-      symbols. This represents a logical combination of the items with & having higher precedence
-      than | (i.e. its in disjunctive normal form). The & symbols can mostly be omitted since adjacent
-      items are assumed to be in the same conjunction, but at least one of &/| must be in the list for
-      it to be recognized as a logical combination.
+ - 6. A logical combination; i.e. list containing any of the previously mentioned items separated by
+      & (AND) and | (OR) symbols. This represents a logical combination of the items with & having higher 
+      precedence than | (i.e. its in disjunctive normal form). The & symbols can be omitted since adjacent
+      items are assumed to be in the same conjunction, but it may be useful to add them for clarity.
       Examples:
       (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
       (:empty (\"bar\" 1) | :nonempty (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
       but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
- - 7. A list of any of the previously mentioned items separated by -> symbols. Each part defines a 
+ - 7. A jump sequence:  list of any of the previously mentioned items separated by -> symbols. Each part defines a 
       particular jump, and these jumps are performed sequentially on successive applications of
       `org-table-jump-next'. Logical combinations (see 6) between -> symbols do not need to be parenthesized,
       but you must make sure to include at least one & or | symbols so they are recognized as such. 
@@ -1436,6 +1435,10 @@ The cell will swap places with the one in the direction chosen."
       Example: (:empty & (\"bar\" 1) -> :nonempty & (\"foo\" 0 -1) -> (numdlines . numcols))
       This will first jump to the next empty cell above one containing \"bar\", then jump to the next non-empty 
       cell to the right of one containing \"foo\", then jump to the last cell, and repeat.
+      A jump sequence may also contain nested jump sequences, which will be incremented one step per iteration of 
+      the parent sequence, e.g: (A -> (B -> C) -> D) would traverse the letters in the following order; A,B,D,A,C,D
+      Jump sequences can be nested at any level, so you could also have (A -> (B -> (C -> D)) -> E) which would
+      perform the following sequence; A,B,E,A,C,E,A,B,D,A,D,E,etc.
  - 8. A list containing the symbol `jmpprefixes' followed by a mixture of any of the previously mentioned items,
       and numbers 0-9. The item or sequence of items that come after a number, and preceeds the next number or
       end of the list defines a condition or jump sequence that is assigned to the corresponding numeric prefix arg.
@@ -1636,10 +1639,13 @@ The jump condition must take one of the following forms:\n\n"))
 				 (set-buffer curbuf))
 			     ((quit error) (with-current-buffer helpbuf (kill-buffer-and-window)))))))))
   (setf (alist-get 'jmpidx org-table-jump-state) 0
-	(alist-get 'history org-table-jump-state) nil)
-  (setcdr org-table-jump-condition (or (and (stringp condition)
-					    (cdr (assoc condition org-table-jump-condition-presets)))
-				       condition)))
+	(alist-get 'history org-table-jump-state) nil
+	(alist-get 'seqlens org-table-jump-state) nil)
+  (setq org-table-jump-condition
+	(cons (or (car org-table-jump-condition) 'down)
+	      (or (and (stringp condition)
+		       (cdr (assoc condition org-table-jump-condition-presets)))
+		  condition))))
 
 ;; simple-call-tree-info: CHECK
 (defun org-table-set-jump-direction (direction)
@@ -1852,11 +1858,14 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 	  (guard (memq '-> lst)))
      (let* ((jmplst (-split-on '-> lst))
 	    (jmpidx (alist-get 'jmpidx org-table-jump-state))
-	    (newjmpidx (if jmpidx
-			   (mod (if (> steps 0) (1+ jmpidx) (1- jmpidx))
-				(length jmplst))
-			 0))
-	    (nextcond (org-table-parse-jump-condition (nth newjmpidx jmplst))))
+	    (newjmpidx (if jmpidx (if (> steps 0) (1+ jmpidx) (1- jmpidx)) 0))
+	    (nextcond (org-table-parse-jump-condition
+		       (nth (mod (/ newjmpidx
+				    (apply '* (or (cdr (push (length jmplst)
+							     (alist-get 'seqlens org-table-jump-state)))
+						  '(1))))
+				 (length jmplst)) jmplst)))) ;CHECK
+       (pop (alist-get 'seqlens org-table-jump-state))
        (setf (alist-get 'jmpidx org-table-jump-state) newjmpidx)
        (if (< steps 0) ;; use jump history to navigate backwards if possible since it's more accurate
 	   (if (equal (cons startline startcol)
@@ -1983,6 +1992,7 @@ In both these cases STEPS is set to 1."
 	 (matchcount 0)
 	 (startpos (point))
 	 (startfield (nth (1- startcol) (nth (nth (1- startline) table-dlines) table))))
+    (setf (alist-get 'seqlens org-table-jump-state) nil)
     (eval `(cl-labels ,(mapcar 'car org-table-filter-function-bindings)
 	     (symbol-macrolet ,(mapcar '-cons-to-list
 				       (--filter (keywordp (car it))
