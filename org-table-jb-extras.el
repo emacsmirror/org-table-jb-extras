@@ -1435,8 +1435,8 @@ The cell will swap places with the one in the direction chosen."
       Example: (:empty & (\"bar\" 1) -> :nonempty & (\"foo\" 0 -1) -> (numdlines . numcols))
       This will first jump to the next empty cell above one containing \"bar\", then jump to the next non-empty 
       cell to the right of one containing \"foo\", then jump to the last cell, and repeat.
-      A jump sequence may also contain nested jump sequences, which will be incremented one step per iteration of 
-      the parent sequence, e.g: (A -> (B -> C) -> D) would traverse the letters in the following order; A,B,D,A,C,D
+      A jump sequence may contain nested jump sequences, which move forward one step per complete iteration of
+      the parent sequence, e.g: (A -> (B -> C) -> D) traverses letters in the following order; A,B,D,A,C,D,etc.
       Jump sequences can be nested at any level, so you could also have (A -> (B -> (C -> D)) -> E) which would
       perform the following sequence; A,B,E,A,C,E,A,B,D,A,D,E,etc.
  - 8. A list containing the symbol `jmpprefixes' followed by a mixture of any of the previously mentioned items,
