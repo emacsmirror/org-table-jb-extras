@@ -2027,15 +2027,33 @@ If NAMEDP is non-nil only list named tables."
   (pop-to-buffer "*Occur*"))
 
 ;; simple-call-tree-info: TODO
-(defun org-table-get-stored-jump-condition nil
+(defun org-table-get-stored-jump-condition (&optional here)
   "Return the jump condition stored on the #+TBLJMP line after the org-table at point.
-If no such line exists return nil."
-  (unless (org-at-table-p) (error "No org-table here"))
+If no such line exists return nil. If HERE is non-nil only consider #+TBLJMP on the
+current line."
+  (unless (or (org-at-table-p) here) (error "No org-table here"))
   (save-excursion
-    (goto-char (org-table-end))
+    (goto-char (if here (line-beginning-position) (org-table-end)))
     (let ((case-fold-search t))
-      (when (looking-at "\\(?:[ \t]*\n\\)*[ \t]*\\(?:#\\+TBLFM:.*\n\\)*#\\+TBLJMP: *\\(.*\\)")
+      (when (looking-at
+	     (concat (unless here "\\(?:[ \t]*\n\\)*[ \t]*\\(?:#\\+TBLFM:.*\n\\)*")
+		     "[ \t]*#\\+TBLJMP:[ \t]*\\(.*\\)"))
 	(read (match-string-no-properties 1))))))
+
+;; simple-call-tree-info: CHECK
+(defun org-table-jump-ctrl-c-ctrl-c nil
+  "Function run when `C-c C-c' is pressed and point is on a #+TBLJMP line."
+  (let ((pair (org-table-get-stored-jump-condition t)))
+    (if (or (not (consp pair))
+	    (not (memq (car pair) '(left right up down))))
+	(progn (setcar org-table-jump-condition
+		       (or (car org-table-jump-condition) 'down))
+	       (setcdr org-table-jump-condition pair))
+      (setcar org-table-jump-condition (car pair))
+      (setcdr org-table-jump-condition (cdr pair)))
+    (org-table-show-jump-condition)))
+
+(add-hook 'org-ctrl-c-ctrl-c-hook 'org-table-jump-ctrl-c-ctrl-c)
 
 (provide 'org-table-jb-extras)
 
