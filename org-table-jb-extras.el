@@ -1635,6 +1635,8 @@ The jump condition must take one of the following forms:\n\n"))
 				 (with-current-buffer helpbuf (kill-buffer-and-window))
 				 (set-buffer curbuf))
 			     ((quit error) (with-current-buffer helpbuf (kill-buffer-and-window)))))))))
+  (setf (alist-get 'jmpidx org-table-jump-state) 0
+	(alist-get 'history org-table-jump-state) nil)
   (setcdr org-table-jump-condition (or (and (stringp condition)
 					    (cdr (assoc condition org-table-jump-condition-presets)))
 				       condition)))
