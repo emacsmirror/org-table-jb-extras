@@ -56,15 +56,16 @@ The syntax allows the use of logical operators & (AND) | (OR) for combining cond
 sequences of different jump conditions that are traversed on successive applications of *org-table-jump-next*.
 
 Jump sequences can be nested, and nested sequences move one step forward for each complete iteration of the parent sequence,
-for example (A -> (B -> C) -> D) results in the following sequence; A,B,D,A,C,D,A,B,D,etc.
-and (A -> (B -> (C -> D)) -> E) results in; A,B,E,A,C,E,A,B,E,A,D,E,A,B,E,etc.
+for example:
+ - (A -> (B -> C) -> D) results in; A,B,D,A,C,D,A,B,D,etc.
+ - (A -> (B -> (C -> D)) -> E) results in; A,B,E,A,C,E,A,B,E,A,D,E,A,B,E,etc.
 
-Jump sequences also keep a track of the history of visited cells so that if you more forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the same cells in reverse. However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
+Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the same cells in reverse. However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
 
 In a jump condition definition you can make use of functions defined in *org-table-filter-function-bindings*, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
-For example the following table has an associated jump condition (defined on the #+TBLJMP line underneath) which will flatten cells
-to the right of empty ones, and then put a horizontal line under them.
+For example the following table has an associated jump condition (defined on the *#+TBLJMP:* line underneath) which will flatten
+cells to the right of empty ones, and then put a horizontal line under them.
 To use it, put point in the first cell of the org-table, do *C-u M-x org-table-jump-next*, and choose "load from #+TBLJMP" from the menu.
 | foo | bar  |
 |     | choo |
