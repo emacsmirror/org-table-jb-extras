@@ -1843,7 +1843,7 @@ Arguments LINE & COL are the position of the starting cell."
 		    (org-table-goto-column col)
 		    (org-table-flatten-columns nrows ncols func reps))))
 
-;; simple-call-tree-info: TODO use -split-on & -partition-before-pred to create better dsl
+;; simple-call-tree-info: CHECK
 (defun org-table-parse-jump-condition (jmpcnd)
   "Parse JMPCND into form that can be evalled in `org-table-jump-next'.
 Depends upon dynamically bound variables; steps, matchcount, startline, startcol, currentline, currentcol."

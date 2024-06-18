@@ -35,36 +35,45 @@ Alternatively if you don't want to depend on external binaries you can use the *
 
 If you want more fine-grained control you can use *org-table-flatten-columns* to select exactly which cells should be combined, and how they should be combined (see *org-table-flatten-functions*). When used in combination with *org-table-jump-next* (using *flatten*, see below) and keyboard macros this can be very convenient.
 ** Navigating/altering org-table cells
-The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating and altering or restructuring tables cell-by-cell. You select a jump condition which determines the sequence of cells visited when *org-table-jump-next* is invoked repeatedly.
+The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for quickly & easily navigating, altering or restructuring tables cell-by-cell. When *org-table-jump-next* is invoked, it looks at the content of *org-table-jump-condition* (which can be viewed with *M-x org-table-show-jump-condition*) to decide where to move the cursor.
 
-There are many predefined jump conditions in *org-table-jump-condition-presets* such as ":empty" (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
+*** defining jump conditions
+A jump condition is an sexp that uses a special syntax/DSL and functions, and is evaluated within the context of a table cell.
+If it evaluates to non-nil then the cursor is moved to that cell. 
 
+There are many predefined jump conditions in *org-table-jump-condition-presets* such as :empty (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
 These presets can be selected, altered, or you can define you own by either pressing *C-u* followed by  *M-x org-table-jump-next/org-table-jump-prev* or pressing *M-x org-table-set-jump-condition*.
-
-If you want to store a jump condition for reuse later you can customize *org-table-jump-condition-presets*.
-Alternatively you can store table specific jump conditions at the bottom of a table on a line that starts with *#+TBLJMP:*.
-This line should come directly after the table and any *#+TBLFM:* lines, and may be either the condition alone, or a cons cell
-whose car is a direction (see below) and whose cdr is a condition.
 
 By default the table is searched row-by-row from left to right and top to bottom to find the next position to jump to.
 You can select the direction of search by using a double *C-u* prefix when calling *org-table-jump-next/org-table-jump-prev* or by
 calling *org-table-set-jump-direction*. The choices are; 'up (col-by-col upwards, right to left), 'down (col-by-col downwards, left to right), 'left (row-by-row leftwards, bottom to top), or 'right (row-by-row rightwards, top to bottom).
 
-Jump conditions are defined using a special syntax and functions explained in the docstring for *org-table-jump-condition*.
-This docstring is displayed when you are prompted to enter a condition.
-The syntax allows the use of logical operators & (AND) | (OR) for combining conditions, and a sequence operator -> for creating
-sequences of different jump conditions that are traversed on successive applications of *org-table-jump-next*.
+The DSL allows the use of logical operators & (AND) | (OR) for combining conditions, and a sequence operator -> for creating
+sequences of different jump conditions that are traversed on successive applications of *org-table-jump-next* (see below).
+It can also make use of special functions defined in *org-table-filter-function-bindings*, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
-Jump sequences can be nested, and nested sequences move one step forward for each complete iteration of the parent sequence,
-for example:
- - (A -> (B -> C) -> D) results in; A,B,D,A,C,D,A,B,D,etc.
- - (A -> (B -> (C -> D)) -> E) results in; A,B,E,A,C,E,A,B,E,A,D,E,A,B,E,etc.
+A detailed description of the DSL & special functions is given in the docstring for *org-table-jump-condition* which is displayed in a help window when entering a jump condition manually.
+*** prefix keys
+Normally a numeric prefix of N to *org-table-jump-next* or *org-table-jump-prev* has the effect of repeating the jump N times.
+However you may also assign some prefixes to different jump conditions, allowing you to quickly swap between different jump types.
 
-Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the same cells in reverse. However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
+To do this, define the jump condition as a list starting with a digit (usually 0), and containing digits for the other numeric prefix
+keys, between 1 & 9, that you want to assign to.
+Items coming after a digit, say N, in that list, and before any subsequent digit or the end of the list, will be used as the jump condition for any numeric prefix that ends with the digit N.
+The other digits of the prefix will be used as the repetition count, so e.g. a prefix of C-123 will jump 12 times using the jump condition assigned to 3. The digit 0 is used to define the jump condition when no prefix key is used.
 
-In a jump condition definition you can make use of functions defined in *org-table-filter-function-bindings*, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
+Example: src_emacs-lisp{(0 :empty 1 :nonempty :hline-below 2 :empty -> :nonempty :hline-above)}
 
-For example the following table has an associated jump condition (defined on the *#+TBLJMP:* line underneath) which will flatten
+This will jump to the next empty cell when no prefix is used, the next non-empty cell above a horizontal line when a prefix
+ending in 1 is used, and when a prefix ending in 2 is used it toggles between empty cells and non-empty cells below horizontal lines (see "jump sequences" below for more info about the last one).
+*** storage
+If you want to store a jump condition for reuse later you can customize *org-table-jump-condition-presets*.
+
+Alternatively you can store table specific jump conditions at the bottom of a table on a line that starts with *#+TBLJMP:*.
+This line should come directly after the table and any *#+TBLFM:* lines, and may be either the condition alone, or a cons cell
+whose car is a direction (see below) and whose cdr is a condition.
+*** example
+The following table has an associated jump condition (defined on the *#+TBLJMP:* line underneath) which will flatten
 cells to the right of empty ones, and then put a horizontal line under them.
 To use it, put point in the first cell of the org-table, do *C-u M-x org-table-jump-next*, and choose "load from #+TBLJMP" from the menu.
 | foo | bar  |
@@ -78,10 +87,19 @@ You should get a table that looks like this one:
 | foo | bar choo zoo |
 |-----+--------------|
 | aaa | bbb          |
-After the jump condition has been assigned, further applications of *org-table-jump-next* without a *C-u* prefix will perform the same operation, or the next jump in a jump sequence. If you have assigned a keybinding for *org-table-jump-next* you could save it in a keyboard macro along with other editing operations such as marking altered cells.
 
+You can see that jump conditions allow you to perform complex table manipulations easily. When used in combination with keyboard macros even more is possible.
+*** jump sequences
+Jump sequences allow different jump conditions to be used in sequence. They can be nested, and nested sequences move one step forward for each complete iteration of the parent sequence. For example:
+
+ - src_emacs-lisp{(A -> B -> C)} results in A,B,C,A,B,C,etc.
+ - src_emacs-lisp{(A -> (B -> C) -> D)} results in A,B,D,A,C,D,A,B,D,etc.
+ - src_emacs-lisp{(A -> (B -> (C -> D)) -> E)} results in A,B,E,A,C,E,A,B,E,A,D,E,A,B,E,etc.
+
+Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the exact same cells in reverse (which might not happen if we simply reversed the direction and sequence order). However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
+*** state
 Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks. The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of this.
-
+*** debugging
 To debug a jump conditions place "(debug nil)" form somewhere within it.
 ** Filtering org-tables
 *org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
