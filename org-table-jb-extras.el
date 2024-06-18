@@ -204,8 +204,7 @@ previous vertical lines will be deleted."
 			    (if fwd (1+ (point)) (point))))))
       (delete-extract-rectangle (vlineend start col nil) (vlineend start col t)))))
 
-;;;###autoload
-;; simple-call-tree-info: CHECK  
+;; simple-call-tree-info: DONE
 (defcustom org-table-flatten-functions
   '(("append" . (lambda (sep lst)
 		  (interactive (list (read-string "Separator (default \" \"): " nil nil " ") '<>))
@@ -868,9 +867,11 @@ not used."
      "Non-nil if REGEX matches any column in a row")
     ((rowsum nil (-sum (mapcar 'string-to-number row))) .
      "Sum the numbers in all the columns of a row.")
-    ((tablefield (line col) (nth (1- col) (nth (nth (1- line) table-dlines) table))))
+    ((tablefield (line col) (nth (1- col) (nth (nth (1- line) table-dlines) table)))
+     . "Get the contents of a cell located by LINE and COL numbers.")
     ((settablefield (line col value)
-		    (setf (nth (1- col) (nth (nth (1- line) table-dlines) table)) value)))
+		    (setf (nth (1- col) (nth (nth (1- line) table-dlines) table)) value))
+     . "Set the contents of a cell located by LINE and COL numbers.")
     ((field (&optional roffset coffset)
 	    (let ((line (+ currentline (or roffset 0)))
 		  (col (+ currentcol (or coffset 0))))
@@ -1725,6 +1726,7 @@ If any bound is not satisfied nil is returned, otherwise non-nil."
 				   (<= (first b) c (second b))))
 			       counts bounds)))
 
+;; simple-call-tree-info: CHECK
 (defcustom org-table-timestamp-patterns
   '("yyyy/MM/dd HH:mm:ss" "yyyy/MM/dd HH:mm" "yyyy/MM/dd" 
     "yyyy-MM-dd HH:mm:ss" "yyyy-MM-dd HH:mm" "yyyy-MM-dd" 
@@ -1748,7 +1750,7 @@ e.g: (setq 'org-table-timestamp-patterns '(\"yy/MM/dd\")
   :type '(repeat (string :tag "Pattern" :help-echo "A java-style date-time pattern"))
   :require 'datetime
   :set (lambda (sym patterns)
-	 (setq sym patterns)
+	 (set sym patterns)
 	 (setq org-table-timestamp-regexp
 	       (concat "\\(?:" (substring
 				(cl-loop for pattern in patterns
