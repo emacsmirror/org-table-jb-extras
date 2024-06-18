@@ -1401,13 +1401,13 @@ The cell will swap places with the one in the direction chosen."
 ;; Defining this in a separate variable instead of a docstring ensures its available even in compiled code.
 ;; simple-call-tree-info: TODO 
 (defvar org-table-jump-documentation
-  " - 1. A keyword condition; i.e. a keyword matching an element of `org-table-jump-condition-presets', 
+  " - 1. A keyword condition; i.e. a keyword matching an element of `org-table-jump-condition-presets',
       e.g. :empty
  - 2. A regexp match; i.e. a regexp for matching the contents of the desired cell, e.g. \"foo\".
- - 3. An offset regexp match; i.e. a list containing a regexp followed by one or two numbers indicating 
+ - 3. An offset regexp match; i.e. a list containing a regexp followed by one or two numbers indicating
       the row & column offset (relative to the current cell) of the cell to match the regexp against, e.g.
       (\"foo\" 1 1) = cell 1 row above and 1 column to the left of a cell containing \"foo\"
- - 4. A cell position; i.e. a cons cell containing the line & column number to jump to. The car may be any 
+ - 4. A cell position; i.e. a cons cell containing the line & column number to jump to. The car may be any
       expression that evaluates to a number, and the cdr may be a number or symbol that evaluates to a number;
       e.g. (1 . 1) = top-left cell, ((1- numdlines) . numcols) = cell above bottom-right cell
       (note: you can also use the gotocell function described below).
@@ -1416,43 +1416,40 @@ The cell will swap places with the one in the direction chosen."
       and any of the functions and variables listed below,
       e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
  - 6. A logical combination; i.e. list containing any of the previously mentioned items separated by
-      & (AND) and | (OR) symbols. This represents a logical combination of the items with & having higher 
+      & (AND) and | (OR) symbols. This represents a logical combination of the items with & having higher
       precedence than | (i.e. its in disjunctive normal form). The & symbols can be omitted since adjacent
       items are assumed to be in the same conjunction, but it may be useful to add them for clarity.
       Examples:
       (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
       (:empty (\"bar\" 1) | :nonempty (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
       but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
- - 7. A jump sequence:  list of any of the previously mentioned items separated by -> symbols. Each part defines a 
+ - 7. A jump sequence; a list of any of the previously mentioned items separated by -> symbols. Each part defines a
       particular jump, and these jumps are performed sequentially on successive applications of
       `org-table-jump-next'. Logical combinations (see 6) between -> symbols do not need to be parenthesized,
-      but you must make sure to include at least one & or | symbols so they are recognized as such. 
+      but you must make sure to include at least one & or | symbols so they are recognized as such.
       The sequence of cells visited is memorized so that if `org-table-jump-prev' is executed directly after
       a sequence of applications of `org-table-jump-next' then the exact same cells are visited in reverse order.
       If point has moved to a different cell between calls to `org-table-jump-next' and `org-table-jump-prev',
-      then the sequence of jumps will be performed in reverse order and with reverse search direcion, but 
-      different cells will be visited. 
+      then the sequence of jumps will be performed in reverse order and with reverse search direcion, but
+      different cells will be visited.
       Example: (:empty & (\"bar\" 1) -> :nonempty & (\"foo\" 0 -1) -> (numdlines . numcols))
-      This will first jump to the next empty cell above one containing \"bar\", then jump to the next non-empty 
+      This will first jump to the next empty cell above one containing \"bar\", then jump to the next non-empty
       cell to the right of one containing \"foo\", then jump to the last cell, and repeat.
       A jump sequence may contain nested jump sequences, which move forward one step per complete iteration of
       the parent sequence, e.g: (A -> (B -> C) -> D) traverses letters in the following order; A,B,D,A,C,D,etc.
       Jump sequences can be nested at any level, so you could also have (A -> (B -> (C -> D)) -> E) which would
       perform the following sequence; A,B,E,A,C,E,A,B,D,A,D,E,etc.
- - 8. A list containing the symbol `jmpprefixes' followed by a mixture of any of the previously mentioned items,
-      and numbers 0-9. The item or sequence of items that come after a number, and preceeds the next number or
-      end of the list defines a condition or jump sequence that is assigned to the corresponding numeric prefix arg.
-      An item(s) at the beginning of the list that has no preceeding number, or is preceeded by 0, are assigned
-      as the default jump condition/sequence, and will be used when `org-table-jump-next' is called with no
-      numeric prefix arg or a prefix arg that doesn't match any of those listed. For example:
-
-      (jmpprefixes :empty 1 :nonempty 2 :top :bottom)
-
-      This means; by default jump to the next empty cell, if a C-1 is pressed beforehand then jump to the next
-      nonempty cell, and if C-2 is pressed toggle between the top & bottom lines of the table.
-      If you want to use a numeric prefix to repeat a jump you can press the C-[0-9] keys as normal to specify
-      the number of repetitions, followed by the numeric prefix key for the jump condition/sequence that you
-      want to use, e.g. in the example above a numeric prefix of C-31 will repeat :nonempty 3 times.
+ - 8. Prefix key definitions; a list of any of the previously mentioned items separated by digits between 0-9
+      representing numeric prefix keys, with 0 meaning no prefix. The first element in the list must be a digit.
+      When `org-table-jump-next' is called with no prefix then the items between 0 and the next digit in the list
+      are used to define the jump condition or sequence. When it's called with any numeric prefix then the last
+      digit of the prefix is used in a similar way to select the items for the jump condition or sequence, and
+      the other digits determine how many times to jump. For example:
+      (0 :empty 1 :nonempty 2 :top -> :bottom) = with no prefix jump to the next empty cell, with a prefix whose
+      last digit is 1 jump to the next non-empty cell, and with a prefix whose last digit is 2 toggle between
+      jumping to the first/last line of the table. A prefix of C-121 would jump to the 12th next non-empty cell.
+      If no 0 is present in the list then when `org-table-jump-next' is called with no prefix it will move to the
+      next cell in the current jump direction.
 
 Each sexp can make use of the functions defined in `org-table-filter-function-bindings' which by default includes
 the following functions. Many of these functions have optional ROFFSET & COFFSET args which refer to row & column
@@ -1853,7 +1850,20 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
   (pcase jmpcnd
     ((pred keywordp) ;; preset keyword conditions
      (org-table-parse-jump-condition (cdr (assoc jmpcnd org-table-jump-condition-presets))))
-    ((and (pred listp) ;; jump sequences
+    ((and (pred listp) ;; jump prefix key definitions
+	  (app car (pred numberp)))
+     (let* ((prefix (if (not (listp current-prefix-arg))
+			(mod (abs (prefix-numeric-value current-prefix-arg))
+			     10)
+		      0))
+	    (parts (-partition-before-pred 'numberp jmpcnd))
+	    (jmpcnd2 (alist-get prefix parts)))
+       (setq steps (* (signum steps) (max 1 (/ (- (abs steps) prefix) 10))))
+       (case (length jmpcnd2)
+	 (0 t)
+	 (1 (org-table-parse-jump-condition (car jmpcnd2)))
+	 (t (org-table-parse-jump-condition jmpcnd2)))))
+    ((and (pred listp) ;; jump sequences (must come after jump prefix key definitions)
 	  lst
 	  (guard (memq '-> lst)))
      (let* ((jmplst (-split-on '-> lst))
@@ -1917,21 +1927,6 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
 	  (app cdr col)
 	  (guard (and col (or (symbolp col) (integerp col)))))
      `(gotocell ,(car jmpcnd) ,col))
-    ((and (pred listp) ;; jump prefix key definitions
-	  (app car 'jmpprefixes)
-	  (app cdr jmplst))
-     (let* ((prefix (if (not (listp current-prefix-arg))
-			(mod (abs (prefix-numeric-value current-prefix-arg))
-			     10)
-		      0))
-	    (parts (-partition-before-pred 'numberp jmplst))
-	    (jmplst2 (alist-get prefix parts)))
-       (setq steps (* (signum steps) (max 1 (/ (- (abs steps) prefix) 10))))
-       (case (length jmplst2)
-	 (0 (org-table-parse-jump-condition
-	     (cons 'jmpseq (car (--remove (numberp (car it)) parts)))))
-	 (1 (org-table-parse-jump-condition (car jmplst2)))
-	 (t (org-table-parse-jump-condition (cons 'jmpseq jmplst2))))))
     (_ jmpcnd)))
 
 ;; simple-call-tree-info: DONE
