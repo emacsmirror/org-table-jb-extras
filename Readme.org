@@ -41,7 +41,7 @@ The *org-table-jump-next* & *org-table-jump-prev* commands provide a method for 
 A jump condition is an sexp that uses a special syntax/DSL and functions, and is evaluated within the context of a table cell.
 If it evaluates to non-nil then the cursor is moved to that cell. 
 
-There are many predefined jump conditions in *org-table-jump-condition-presets* such as :empty (jump to the next empty cell), "---/cell" (jump to the next cell under a horizontal line), "first<->last" (toggle between first/last cell), etc.
+There are many predefined jump conditions in *org-table-jump-condition-presets* such as *:empty* (jump to the next empty cell), *---/cell* (jump to the next cell under a horizontal line), *first<->last* (toggle between first/last cell), etc.
 These presets can be selected, altered, or you can define you own by either pressing *C-u* followed by  *M-x org-table-jump-next/org-table-jump-prev* or pressing *M-x org-table-set-jump-condition*.
 
 By default the table is searched row-by-row from left to right and top to bottom to find the next position to jump to.
@@ -70,30 +70,30 @@ Example:
 This will jump to the next empty cell when no prefix is used, the next non-empty cell above a horizontal line when a prefix
 ending in 1 is used, and when a prefix ending in 2 is used it toggles between empty cells and non-empty cells below horizontal lines (see "jump sequences" below for more info about the last one).
 *** Storage
-If you want to store a jump condition for reuse later you can customize *org-table-jump-condition-presets*.
+The history of manually entered jump conditions is stored in *org-table-jump-condition-history* which can be accessed by pressing the up & down arrow keys at the prompt after doing *C-u M-x org-table-jump-next* or *M-x org-table-set-jump-condition* followed by "enter manually". If you use the [[https://emacs-session.sourceforge.net][session]] library you can make sure this history persists between emacs sessions by adding it to *session-globals-include*.
+
+You can also add jump conditions to *org-table-jump-condition-presets* and give them descriptions which will be shown in the prompt for selecting a jump condition.
 
 Alternatively you can store table specific jump conditions at the bottom of a table on a line that starts with *#+TBLJMP:*.
 This line should come directly after the table and any *#+TBLFM:* lines, and may be either the condition alone, or a cons cell
 whose car is a direction (see below) and whose cdr is a condition.
 *** Example
-The following table has an associated jump condition (defined on the *#+TBLJMP:* line underneath) which will flatten
-cells to the right of empty ones, and then put a horizontal line under them.
-To use it, put point in the first cell of the org-table, do *C-u M-x org-table-jump-next*, and choose "load from #+TBLJMP" from the menu.
-| foo | bar  |
-|     | choo |
-|     | zoo  |
-| aaa | bbb  |
-#+TBLJMP: ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
+The following jump condition will flatten cells to the right of empty ones, and then put a horizontal line under them.
 #+BEGIN_SRC emacs-lisp
  #+TBLJMP: ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
 #+END_SRC
 
+When applied to the following table:
+| foo | bar  |
+|     | choo |
+|     | zoo  |
+| aaa | bbb  |
 You should get a table that looks like this one:
 | foo | bar choo zoo |
 |-----+--------------|
 | aaa | bbb          |
 
-You can see that jump conditions allow you to perform complex table manipulations easily. When used in combination with keyboard macros even more is possible.
+You can see that once defined, jump conditions allow you to perform complex table manipulations easily. When used in combination with keyboard macros even more is possible.
 *** Jump sequences
 Jump sequences allow different jump conditions to be used in sequence. They can be nested, and nested sequences move one step forward for each complete iteration of the parent sequence. For example:
 
