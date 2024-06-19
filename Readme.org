@@ -137,9 +137,9 @@ Jump conditions may pass information from one jump to the next using the *org-ta
 more complex tasks.
 
 This is done either using the *getvar,setvar* & *checkvar* functions, or using the following syntax:
- - (KEY == VAL1 VAL2 ...) : The value associated with KEY in `org-table-jump-state' will be compared against VAL1, VAL2, etc.
+ - (KEY == VAL1 VAL2 ...) : The value associated with KEY in *org-table-jump-state* will be compared against VAL1, VAL2, etc.
    and if one of them matches, then non-nil will be returned.
- - (KEY := VAL) : The value associated with KEY in `org-table-jump-state' will be set to VAL.
+ - (KEY := VAL) : The value associated with KEY in *org-table-jump-state* will be set to VAL.
 
 In the following example we jump to cells containing "foo" until we reach one above an empty cell, at which point we jump to cells
 containing "bar", and then back to "foo" cells again.
