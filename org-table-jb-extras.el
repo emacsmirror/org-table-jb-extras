@@ -879,9 +879,10 @@ not used."
 		(tablefield line col))))
      . "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((matchfield (regex &optional roffset coffset)
-		 (let ((str (field roffset coffset)))
-		   (and str (string-match regex str))))
-     . "Perform `string-match' with REGEX on contents of a field/cell indexed relative to current one.")
+		 (let ((str (field roffset coffset))
+		       (match (and str (string-match regex str))))
+		   (when match (cons str match))))
+     . "Return cons cell containing field & results of performing `string-match' with REGEX on field.")
     ((setfield (value &optional roffset coffset noprompt)
 	       (let ((line (+ currentline (or roffset 0)))
 		     (col (+ currentcol (or coffset 0))))
@@ -908,6 +909,9 @@ not used."
 		     (if num (setfield (number-to-string (funcall func num))
 				       roffset coffset noprompt))))
      . "Apply FUNC to number in field, and replace the field with the result.")
+    ((getdate (&optional roffset coffset)
+	      (match-string 1 (matchfield org-table-timestamp-regexp roffset coffset)))
+     . "Get date in relative field or return nil if none.")
     ((convertdate (&optional outfmt roffset coffset noprompt &rest patterns)
 		  (let* ((f (field roffset coffset))
 			 (newfield (if f (org-table-convert-timestamp f outfmt patterns))))
@@ -1754,7 +1758,10 @@ e.g: (setq 'org-table-timestamp-patterns '(\"yy/MM/dd\")
 	 (setq org-table-timestamp-regexp
 	       (concat "\\(?:" (substring
 				(cl-loop for pattern in patterns
-					 concat (concat "\\(" (datetime-matching-regexp 'java pattern) "\\)\\|"))
+					 concat (concat
+						 "\\("
+						 (datetime-matching-regexp 'java pattern :only-4-digit-years t)
+						 "\\)\\|"))
 				0 -2) "\\)")
 	       org-table-timestamp-parsers
 	       (cl-loop for pattern in patterns
@@ -1764,7 +1771,7 @@ e.g: (setq 'org-table-timestamp-patterns '(\"yy/MM/dd\")
   (concat "\\(?:"
 	  (substring
 	   (cl-loop for pattern in org-table-timestamp-patterns
-		    concat (concat "\\(" (datetime-matching-regexp 'java pattern) "\\)\\|"))
+		    concat (concat "\\(" (datetime-matching-regexp 'java pattern :only-4-digit-years t) "\\)\\|"))
 	   0 -2) "\\)")
   "A regular expression for matching any of the patterns in `org-table-timestamp-patterns'.
 This will be automatically update when `org-table-timestamp-patterns' is updated.
