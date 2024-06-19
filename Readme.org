@@ -133,9 +133,24 @@ Jump sequences allow different jump conditions to be used in sequence. They can 
 
 Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the exact same cells in reverse (which might not happen if we simply reversed the direction and sequence order). However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
 *** More advanced jump conditions
-Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks. The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains examples of this.
+Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks.
+This is done using *getvar,setvar* & *checkvar* functions.
+
+In the following example we jump to cells containing "foo" until we reach one above an empty cell, at which point we jump to cells
+containing "bar". This is acheived by using a state variable x, which is initialized to 1 at the start.
+#+BEGIN_SRC emacs-lisp
+  ((null (getvar 'x)) (setvar 'x 1) "foo" | (checkvar 'x 1) "foo" (:empty-below (setvar 'x 2) | t) | (checkvar 'x 2) "bar")
+#+END_SRC
+
+| "foo" | "bar" |
+| "foo" | "zzz" |
+|       | "bar" |
+| "foo" | "bar" |
+| "foo" | "zzz" |
+
+The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains more advanced examples.
 *** Debugging
-To debug a jump conditions place "(debug nil)" form somewhere within it.
+To debug a jump conditions place a "(debug nil)" form somewhere within it.
 ** Filtering org-tables
 *org-dblock-write:tablefilter* is a dynamic block function which can be used for filtering the rows of a table into another one according to various criteria.
 
