@@ -103,25 +103,24 @@ You should get a table that looks like this one:
 |-----+--------------|
 | aaa | bbb          |
 
-The following jump condition will add 1 to cells to the right of dates with year > 2022, and subtract 1 from cells to the right
-of dates with year <= 2022. The initial (getdate) form is needed to ensure we only change cells to the right of those containing
-dates.
+The following jump condition will add 1 to cells to the right of dates with year > 2022, and blank cells to the right
+of dates with year <= 2022. Note that (year (getdate)) will return nil for cells containing no date.
 #+BEGIN_SRC emacs-lisp
-  ((getdate) & ((> (year (getdate)) 2022) (changenumber '1+ 0 1) | (changenumber '1- 0 1)))
+  ((> (or (year (getdate)) 0) 2022) (changenumber '1+ 0 1) | (getdate) (setfield "" 0 1))
 #+END_SRC
 
 When applied to this table:
-|            |   10 |
-| 18/06/2024 | 1.23 |
-| 04/10/2023 | 4.45 |
-| 12/09/2022 | 3.01 |
-| 20/11/2021 | 11.2 |
+| Date       | Amount |
+| 18/06/2024 |   1.23 |
+| 04/10/2023 |   4.45 |
+| 12/09/2022 |   3.01 |
+| 20/11/2021 |   11.2 |
 You should get one that looks like this:
-|            |   10 |
-| 18/06/2024 | 2.23 |
-| 04/10/2023 | 5.45 |
-| 12/09/2022 | 2.01 |
-| 20/11/2021 | 10.2 |
+| Date       | Amount |
+| 18/06/2024 |   2.23 |
+| 04/10/2023 |   5.45 |
+| 12/09/2022 |        |
+| 20/11/2021 |        |
 
 You can see that once defined, jump conditions allow you to perform complex table manipulations easily.
 When used in combination with keyboard macros even more is possible.
