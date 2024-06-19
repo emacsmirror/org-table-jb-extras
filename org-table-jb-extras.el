@@ -1427,13 +1427,16 @@ The cell will swap places with the one in the direction chosen."
       and any of the functions and variables listed below,
       e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
  - 6. A logical combination; i.e. list containing any of the previously mentioned items separated by
-      & (AND) and | (OR) symbols. This represents a logical combination of the items with & having higher
-      precedence than | (i.e. its in disjunctive normal form). The & symbols can be omitted since adjacent
-      items are assumed to be in the same conjunction, but it may be useful to add them for clarity.
+      & (AND), | (OR), or ! (NOT) symbols. This represents a logical combination of the items with ! having 
+      the highest precedence, followed by & and then | (i.e. its in disjunctive normal form). 
+      The ! operator applies to the item that follows it, and & symbols can be omitted since adjacent items 
+      are assumed to be in the same conjunction (but it may sometimes be useful to add them for clarity).
+      No parentheses are needed for grouping items in a conjunction (items AND'ed together), but nested
+      disjunctions (items OR'ed together) do need to be parenthesized.
       Examples:
       (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
-      (:empty (\"bar\" 1) | :nonempty (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
-      but also match non-empty cells to the right of cells containing \"foo\", or the last cell in the table.
+      (:empty (\"bar\" 1) | :nonempty ! (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
+      but also match non-empty cells not to the right of cells containing \"foo\", or the last cell in the table.
  - 7. A jump sequence; a list of any of the previously mentioned items separated by -> symbols. Each part defines a
       particular jump, and these jumps are performed sequentially on successive applications of
       `org-table-jump-next'. Logical combinations (see 6) between -> symbols do not need to be parenthesized,
@@ -1928,12 +1931,18 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
      `(matchfield ,@args))
     ((and (pred listp) ;; conjunctions & disjunctions (must come after offset field regexp matches)
 	  lst
-	  (or (guard (cl-intersection '(& |) lst))
+	  (or (guard (cl-intersection '(& | !) lst))
 	      (app car (or (pred stringp)
 			   (pred keywordp)
 			   (pred listp)))))
-     (let ((orparts (--map (let ((andparts (mapcar 'org-table-parse-jump-condition
-						   (cl-remove '& it))))
+     (let ((orparts (--map (let ((andparts
+				  (--mapcat (if (eq (car it) '!)
+						(cons `(not ,(org-table-parse-jump-condition
+							      (cadr it)))
+						      (mapcar 'org-table-parse-jump-condition
+							      (cddr it)))
+					      (mapcar 'org-table-parse-jump-condition it))
+					    (-partition-before-item '! (cl-remove '& it)))))
 			     (if (> (length andparts) 1)
 				 (cons 'and andparts)
 			       (car andparts)))
