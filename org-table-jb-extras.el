@@ -824,7 +824,7 @@ not used."
 ;;;###autoload
 ;; simple-call-tree-info: TODO
 (defcustom org-table-filter-function-bindings
-  '(((num (x) (string-to-number x)) . "Convert a string to a number.")
+  '(((num (x) (if x (string-to-number x))) . "Convert a string to a number. Return nil if arg is nil.")
     ((days-to-now (x) (condition-case nil (org-time-stamp-to-now x) (error nil))) .
      "Number of days from org timestamp string arg to now.")
     ((seconds-to-now (x) (condition-case nil (org-time-stamp-to-now x t) (error nil))) .
@@ -879,8 +879,8 @@ not used."
 		(tablefield line col))))
      . "Return contents of cell in row (current row + ROFFSET) & column (current column + COFFSET).")
     ((matchfield (regex &optional roffset coffset)
-		 (let ((str (field roffset coffset))
-		       (match (and str (string-match regex str))))
+		 (let* ((str (field roffset coffset))
+			(match (and str (string-match regex str))))
 		   (when match (cons str match))))
      . "Return cons cell containing field & results of performing `string-match' with REGEX on field.")
     ((setfield (value &optional roffset coffset noprompt)
@@ -901,8 +901,7 @@ not used."
 			 (if (and f (string-match regexp f))
 			     (setfield (replace-regexp-in-string regexp rep f) roffset coffset noprompt))))
      . "Replace matches to REGEXP with REP in field in row (current row + ROFFSET) & column (current column + COFFSET).")
-    ((field2num (&optional roffset coffset) (let ((f (field roffset coffset)))
-					      (if f (string-to-number (field roffset coffset)))))
+    ((field2num (&optional roffset coffset) (num (field roffset coffset)))
      . "Read field in row (current row + ROFFSET) & column (current column + COFFSET) as a number and return it.")
     ((changenumber (func &optional roffset coffset noprompt)
 		   (let ((num (field2num roffset coffset)))
@@ -910,8 +909,15 @@ not used."
 				       roffset coffset noprompt))))
      . "Apply FUNC to number in field, and replace the field with the result.")
     ((getdate (&optional roffset coffset)
-	      (match-string 1 (matchfield org-table-timestamp-regexp roffset coffset)))
-     . "Get date in relative field or return nil if none.")
+	      (let ((str (car (matchfield org-table-timestamp-regexp roffset coffset))))
+		(if str
+		    (cl-loop for i below (length org-table-timestamp-patterns)
+			     thereis (let ((str2 (match-string (1+ i) str)))
+				       (and str2 (format-time-string
+						  (cdr org-time-stamp-formats) ;change if necessary
+						  (funcall (nth i org-table-timestamp-parsers)
+							   str2))))))))
+     . "Get org timestamp of date in relative field or return nil if none.")
     ((convertdate (&optional outfmt roffset coffset noprompt &rest patterns)
 		  (let* ((f (field roffset coffset))
 			 (newfield (if f (org-table-convert-timestamp f outfmt patterns))))
