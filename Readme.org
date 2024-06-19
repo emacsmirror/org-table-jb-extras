@@ -48,15 +48,19 @@ By default the table is searched row-by-row from left to right and top to bottom
 You can select the direction of search by using a double *C-u* prefix when calling *org-table-jump-next/org-table-jump-prev* or by
 calling *org-table-set-jump-direction*. The choices are; 'up (col-by-col upwards, right to left), 'down (col-by-col downwards, left to right), 'left (row-by-row leftwards, bottom to top), or 'right (row-by-row rightwards, top to bottom).
 
-The DSL allows the use of logical operators & (AND) | (OR) for combining conditions, and a sequence operator -> for creating
-sequences of different jump conditions that are traversed on successive applications of *org-table-jump-next* (see below).
-It can also make use of special functions defined in *org-table-filter-function-bindings*, e.g. *hline-p* (check for horizontal lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps), and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field) *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
+The DSL allows the use of logical operators ! (NOT), & (AND), | (OR) for combining conditions, and a sequence operator -> for
+creating sequences of different jump conditions that are traversed on successive applications of *org-table-jump-next* (see below).
+It can also make use of special functions defined in *org-table-filter-function-bindings*, e.g. *hline-p* (check for horizontal
+lines), *matchfield* (match a field against a regexp), *countcells* (count neighbouring cells matching regexps),
+and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field)
+*convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
 Example:
 #+BEGIN_SRC emacs-lisp 
-"foo" & ("bar" 1) | (> (sumcounts 'down 0 0 "\\S-" "^\\s-*$") 5)
+("foo" & ! ("bar" 1) | (> (sumcounts 'down 0 0 "\\S-" "^\\s-*$") 5))
 #+END_SRC
-This will jump to the next cell that contains "foo" above a cell containing "bar", OR the next cell with more than 4 empty cells beneath it, whichever comes first.
+This will jump to the next cell that contains "foo" which is NOT above a cell containing "bar", OR the next cell with more
+than 4 empty cells beneath it, whichever comes first.
 
 A detailed description of the DSL & special functions is given in the docstring for *org-table-jump-condition* which is displayed in a help window when entering a jump condition manually.
 *** Prefix keys
@@ -99,19 +103,28 @@ You should get a table that looks like this one:
 |-----+--------------|
 | aaa | bbb          |
 
-
-
+The following jump condition will add 1 to cells to the right of dates with year > 2022, and subtract 1 from cells to the right
+of dates with year <= 2022. The initial (getdate) form is needed to ensure we only change cells to the right of those containing
+dates.
 #+BEGIN_SRC emacs-lisp
-  ((> (or (year (getdate)) 0) 2022) | (getdate) (changenumber (lambda (x) (+ x 3)) 0 1))
+  ((getdate) & ((> (year (getdate)) 2022) (changenumber '1+ 0 1) | (changenumber '1- 0 1)))
 #+END_SRC
 
+When applied to this table:
+|            |   10 |
 | 18/06/2024 | 1.23 |
 | 04/10/2023 | 4.45 |
 | 12/09/2022 | 3.01 |
 | 20/11/2021 | 11.2 |
+You should get one that looks like this:
+|            |   10 |
+| 18/06/2024 | 2.23 |
+| 04/10/2023 | 5.45 |
+| 12/09/2022 | 2.01 |
+| 20/11/2021 | 10.2 |
 
-
-You can see that once defined, jump conditions allow you to perform complex table manipulations easily. When used in combination with keyboard macros even more is possible.
+You can see that once defined, jump conditions allow you to perform complex table manipulations easily.
+When used in combination with keyboard macros even more is possible.
 *** Jump sequences
 Jump sequences allow different jump conditions to be used in sequence. They can be nested, and nested sequences move one step forward for each complete iteration of the parent sequence. For example:
 
