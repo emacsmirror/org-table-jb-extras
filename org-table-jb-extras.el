@@ -965,8 +965,12 @@ not used."
 		 (apply 'org-table-count-matching-fields
 			table table-dlines dir (+ currentline roffset) (+ currentcol coffset) numdlines numcols regexs))
      . "Return list of counts of sequential cells, in direction DIR from cell offset, matching each regexp in REGEXS.")
-    ((checkcounts (counts bounds) (org-table-check-bounds counts bounds)) .
-     "Check BOUNDS of each number in COUNTS.")
+    ((checkcounts (dir roffset coffset &rest regexs)
+		  (let ((lst (-partition-before-pred 'stringp regexs)))
+		    (org-table-check-bounds
+		     (apply (function countcells) dir roffset coffset (mapcar 'car lst))
+		     (mapcar 'cdr lst))))
+     . "Like `countcells', but each regexp should be followed by a lower bound and optionally an upper bound on the No. of matches. If any bound is not satisfied then nil is returned, otherwise non-nil.")
     ((sumcounts (dir roffset coffset &rest regexs)
 		(apply '+ (apply 'org-table-count-matching-fields
 				 table table-dlines dir (+ currentline roffset) (+ currentcol coffset)
@@ -1427,9 +1431,9 @@ The cell will swap places with the one in the direction chosen."
       and any of the functions and variables listed below,
       e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
  - 6. A logical combination; i.e. list containing any of the previously mentioned items separated by
-      & (AND), | (OR), or ! (NOT) symbols. This represents a logical combination of the items with ! having 
-      the highest precedence, followed by & and then | (i.e. its in disjunctive normal form). 
-      The ! operator applies to the item that follows it, and & symbols can be omitted since adjacent items 
+      & (AND), | (OR), or ! (NOT) symbols. This represents a logical combination of the items with ! having
+      the highest precedence, followed by & and then | (i.e. its in disjunctive normal form).
+      The ! operator applies to the item that follows it, and & symbols can be omitted since adjacent items
       are assumed to be in the same conjunction (but it may sometimes be useful to add them for clarity).
       No parentheses are needed for grouping items in a conjunction (items AND'ed together), but nested
       disjunctions (items OR'ed together) do need to be parenthesized.
@@ -1482,7 +1486,8 @@ is left blank then they default to 0. Also note that cell refers to the position
  (movecell DIR &optional ROFFSET COFFSET) = Swap current cell with neighbouring cell in direction DIR ('up/'down/'left/'right)
  (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset,
   return a list containing counts of sequential matches to the 1st regexp, followed by the 2nd regexp, etc.
- (checkcounts COUNTS BOUNDS) = a wrapper around `org-table-check-bounds'.
+ (checkcounts DIR ROFFSET COFFSET &rest REGEXS) = Like `countcells', but each regexp should be followed by a lower bound,
+   and optionally an upper bound on the No. of matches. If any bound is not satisfied then nil is returned, otherwise non-nil.
  (sumcounts DIR ROFFSET COFFSET &rest REGEXS) = similar to countcells but returns total No. of matches.
  (getvar KEY) = get the value associated with KEY in `org-table-jump-state'.
  (setvar KEY VAL) = set the value associated with KEY in `org-table-jump-state' to VAL.
@@ -1551,14 +1556,14 @@ The cdr can take the following form:\n\n"  org-table-jump-documentation))
     (:empty . "^\\s-*$")
     (:nonempty . "\\S-")
     (:empty-above . (and (not (hline-p -1))
-			 (checkcounts (countcells 'up 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
+			 (checkcounts 'up 0 0 "\\S-" 1 1 "^\\s-*$" 1)))
     (:empty-below . (and (not (hline-p 1))
-			 (checkcounts (countcells 'down 0 0 "\\S-" "^\\s-*$") '((1 1) 1))))
-    (:empty-left . (& "\\S-" ("^\\s-*$" 0 -1)))
-    (:empty-right . (& "\\S-" ("^\\s-*$" 0 1)))
+			 (checkcounts 'down 0 0 "\\S-" 1 1 "^\\s-*$" 1)))
+    (:empty-left . ("\\S-" ("^\\s-*$" 0 -1)))
+    (:empty-right . ("\\S-" ("^\\s-*$" 0 1)))
     ("every other" . (> cellcount 1))
-    ("replace empty" . (& "^\\s-*$" (setfield "-")))
-    ("replace empty (no prompt)" . (& "^\\s-*$" (setfield "-" 0 0 t))))
+    ("replace empty" . ("^\\s-*$" (setfield "-")))
+    ("replace empty (no prompt)" . ("^\\s-*$" (setfield "-" 0 0 t))))
   "Named presets for `org-table-jump-condition'.
 Each element is a cons cell (KEY . SEXP) where KEY is either a keyword or a string description of the
 condition evaluated by SEXP. If it is a keyword then it may also be used instead of the corresponding
@@ -1729,14 +1734,14 @@ This can be used for finding cells based on the content of neighbouring cells."
 (defun org-table-check-bounds (counts bounds)
   "Check BOUNDS of each number in COUNTS.
 COUNTS should be a list of numbers, and BOUNDS a list of the same length containing
-a mixture of numbers and lists of length 2. Each number c in COUNTS is checked against
-the corresponding element b in BOUNDS as follows: if b is a single number check (>= c b),
-if b is a list check (<= (first b) c (second b)). 
+lists of length 1 or 2. Each number c in COUNTS is checked against
+the corresponding list b in BOUNDS as follows: if b contains a single number, x, check (<= x c),
+if b contains 2 numbers, x & y, check (<= x c y).
 If any bound is not satisfied nil is returned, otherwise non-nil."
   (-all-p 'identity (cl-mapcar (lambda (c b)
-				 (if (numberp b)
-				     (>= c b)
-				   (<= (first b) c (second b))))
+				 (if (= (length b) 1)
+				     (<= (car b) c)
+				   (<= (car b) c (cadr b))))
 			       counts bounds)))
 
 ;; simple-call-tree-info: CHECK
