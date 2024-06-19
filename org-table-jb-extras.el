@@ -1430,7 +1430,12 @@ The cell will swap places with the one in the direction chosen."
       previously mentioned keyword conditions (which will be replaced by their corresponding forms)
       and any of the functions and variables listed below,
       e.g: (= (mod (field2num 1) 2) 0) = cells above those containing even numbers
- - 6. A logical combination; i.e. list containing any of the previously mentioned items separated by
+ - 6. A status variable check; i.e. a list in the form (KEY == VAL1 VAL2...). The value associated with
+      KEY in the alist `org-table-jump-state' will be compared against VAL1, VAL2, etc. and if one of them
+      matches, then non-nil will be returned. This is a wrapper around the checkvar function mentioned below.
+ - 7. A status variable assignment; i.e. a list in the form (KEY := VAL). The value associated with KEY in
+      `org-table-jump-state' will be set to VAL. This is a wrapper around the setvar function mentioned below.
+ - 8. A logical combination; i.e. a list containing any of the previously mentioned items separated by
       & (AND), | (OR), or ! (NOT) symbols. This represents a logical combination of the items with ! having
       the highest precedence, followed by & and then | (i.e. its in disjunctive normal form).
       The ! operator applies to the item that follows it, and & symbols can be omitted since adjacent items
@@ -1441,7 +1446,7 @@ The cell will swap places with the one in the direction chosen."
       (:empty & (\"bar\" 1)) = empty cells above cells containing \"bar\"
       (:empty (\"bar\" 1) | :nonempty ! (\"foo\" 0 -1) | (numdlines . numcols)) = same as previous match,
       but also match non-empty cells not to the right of cells containing \"foo\", or the last cell in the table.
- - 7. A jump sequence; a list of any of the previously mentioned items separated by -> symbols. Each part defines a
+ - 9. A jump sequence; a list of any of the previously mentioned items separated by -> symbols. Each part defines a
       particular jump, and these jumps are performed sequentially on successive applications of
       `org-table-jump-next'. Logical combinations (see 6) between -> symbols do not need to be parenthesized,
       but you must make sure to include at least one & or | symbols so they are recognized as such.
@@ -1457,7 +1462,7 @@ The cell will swap places with the one in the direction chosen."
       the parent sequence, e.g: (A -> (B -> C) -> D) traverses letters in the following order; A,B,D,A,C,D,etc.
       Jump sequences can be nested at any level, so you could also have (A -> (B -> (C -> D)) -> E) which would
       perform the following sequence; A,B,E,A,C,E,A,B,D,A,D,E,etc.
- - 8. Prefix key definitions; a list of any of the previously mentioned items separated by digits between 0-9
+ -10. Prefix key definitions; a list of any of the previously mentioned items separated by digits between 0-9
       representing numeric prefix keys, with 0 meaning no prefix. The first element in the list must be a digit.
       When `org-table-jump-next' is called with no prefix then the items between 0 and the next digit in the list
       are used to define the jump condition or sequence. When it's called with any numeric prefix then the last
@@ -1876,6 +1881,14 @@ Depends upon dynamically bound variables; steps, matchcount, startline, startcol
   (pcase jmpcnd
     ((pred keywordp) ;; preset keyword conditions
      (org-table-parse-jump-condition (cdr (assoc jmpcnd org-table-jump-condition-presets))))
+    ((and (pred listp) ;; set state variable
+	  (app cadr :=)
+	  (guard (= (length jmpcnd) 3)))
+     `(setvar ',(car jmpcnd) ,(caddr jmpcnd)))
+    ((and (pred listp) ;; get state variable
+	  (app cadr '==)
+	  (guard (> (length jmpcnd) 2)))
+     `(checkvar ',(car jmpcnd) ,@(cddr jmpcnd)))
     ((and (pred listp) ;; jump prefix key definitions
 	  (app car (pred numberp)))
      (let* ((prefix (if (not (listp current-prefix-arg))

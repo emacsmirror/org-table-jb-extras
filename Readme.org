@@ -133,20 +133,27 @@ Jump sequences allow different jump conditions to be used in sequence. They can 
 
 Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the exact same cells in reverse (which might not happen if we simply reversed the direction and sequence order). However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
 *** More advanced jump conditions
-Jump conditions may pass information from one jump to the next using *org-table-jump-state* which allows you to perform more complex tasks.
-This is done using *getvar,setvar* & *checkvar* functions.
+Jump conditions may pass information from one jump to the next using the *org-table-jump-state* alist which allows you to perform
+more complex tasks.
+
+This is done either using the *getvar,setvar* & *checkvar* functions, or using the following syntax:
+ - (KEY == VAL1 VAL2 ...) : The value associated with KEY in `org-table-jump-state' will be compared against VAL1, VAL2, etc.
+   and if one of them matches, then non-nil will be returned.
+ - (KEY := VAL) : The value associated with KEY in `org-table-jump-state' will be set to VAL.
 
 In the following example we jump to cells containing "foo" until we reach one above an empty cell, at which point we jump to cells
-containing "bar". This is acheived by using a state variable x, which is initialized to 1 at the start.
+containing "bar", and then back to "foo" cells again.
+This is achieved using a state variable x, which is initialized to 1 at the start, checked before each jump condition,
+and changed when appropriate. 
 #+BEGIN_SRC emacs-lisp
-  ((null (getvar 'x)) (setvar 'x 1) "foo" | (checkvar 'x 1) "foo" (:empty-below (setvar 'x 2) | t) | (checkvar 'x 2) "bar")
+((x == nil 3) (x := 1) "foo" | (x == 1) "foo" (:empty-below (x := 2) | t) | (x == 2) "bar" (x := 3))
 #+END_SRC
 
-| "foo" | "bar" |
-| "foo" | "zzz" |
-|       | "bar" |
-| "foo" | "bar" |
-| "foo" | "zzz" |
+| foo | bar |
+| foo | zzz |
+|     | bar |
+| foo | bar |
+| foo | zzz |
 
 The file [[https://github.com/vapniks/org-table-jb-extras/blob/main/org-table-solve-mazelog.org][org-table-solve-mazelog.org]] contains more advanced examples.
 *** Debugging
