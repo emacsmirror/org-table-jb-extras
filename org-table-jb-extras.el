@@ -822,7 +822,7 @@ not used."
 ;; and the width of the table, etc.
 
 ;;;###autoload
-;; simple-call-tree-info: TODO
+;; simple-call-tree-info: CHECK
 (defcustom org-table-filter-function-bindings
   '(((num (x) (if x (string-to-number x))) . "Convert a string to a number. Return nil if arg is nil.")
     ((days-to-now (x) (condition-case nil (org-time-stamp-to-now x) (error nil))) .
@@ -1414,7 +1414,7 @@ The cell will swap places with the one in the direction chosen."
   (org-table-align))
 
 ;; Defining this in a separate variable instead of a docstring ensures its available even in compiled code.
-;; simple-call-tree-info: TODO 
+;; simple-call-tree-info: CHECK
 (defvar org-table-jump-documentation
   " - 1. A keyword condition; i.e. a keyword matching an element of `org-table-jump-condition-presets',
       e.g. :empty
@@ -1588,6 +1588,7 @@ The SEXP may make use of functions defined in `org-table-filter-function-binding
 		name)))
     (substring str 0 (min maxchars (length str)))))
 
+;; simple-call-tree-info: DONE
 (defun org-table-show-jump-condition nil
   "Display a message in the minibuffer showing the current jump condition."
   (interactive)
@@ -1703,20 +1704,23 @@ from the current value of `org-table-jump-condition'."
 	(insert "#+TBLJMP:"))
       (insert (concat " (" dirstr " . " condstr ")\n")))))
 
-;; simple-call-tree-info: TODO; fix documentation
+;; simple-call-tree-info: CHECK
 (defun org-table-count-matching-fields (table dlines direction row col nrows ncols &rest regexs)
   "Count fields in TABLE matching REGEXS sequentially in a given DIRECTION.
 TABLE should be a list of lists are returned by `org-table-to-lisp'.
-DLINES should be a list of indices of the rows of TABLE that correspond to data line (i.e. not hlines).
-DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction of movement from the starting cell. 
-You can use the variable `movedir' in `org-table-jump-condition' for the current direction of movement.
+DLINES should be a list of indices of the rows of TABLE that correspond to data lines (i.e. not hlines).
+DIRECTION can be ('up, 'down, 'left or 'right) to indicate the direction of movement from the starting cell,
+or nil to use the direction stored in `org-table-jump-condition'.
+NROWS & NCOLS should be the number of rows and columns in table.
 Starting with cell in ROW & COL position, fields are traversed sequentially in the given DIRECTION,
-and matched against the first regexp, when the first mismatch occurs the next regexp is tried 
-and used for matching subsequent fields until a mismatch etc. until there is a mismatch with the last regexp.
+and matched against the first regexp. When the first mismatch occurs the next regexp is tried, and used
+for matching subsequent fields until a mismatch etc. this process continues until there is a mismatch
+with the last regexp.
 The return value is a list of counts of matches for each regexp.
-This can be used for finding cells based on the content of neighbouring cells."
+This is useful for finding cells based on the content of neighbouring cells."
   (let* ((counts (make-list (length regexs) 0))
 	 (row (1- row)) (col (1- col)) (r 0) (c 0)
+	 (direction (or direction (car org-table-jump-condition)))
 	 (incfn `(lambda nil ,(case direction
 				(up '(decf r))
 				(down '(incf r))
@@ -2066,7 +2070,7 @@ If NAMEDP is non-nil only list named tables."
 	   "^\\s-*[^|].*\n\\s-*|.*"))
   (pop-to-buffer "*Occur*"))
 
-;; simple-call-tree-info: TODO
+;; simple-call-tree-info: CHECK
 (defun org-table-get-stored-jump-condition (&optional here)
   "Return the jump condition stored on the #+TBLJMP line after the org-table at point.
 If no such line exists return nil. If HERE is non-nil only consider #+TBLJMP on the
