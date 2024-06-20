@@ -1500,9 +1500,13 @@ is left blank then they default to 0. Also note that cell refers to the position
  (replace-in-field REGEXP REP &optional ROFFSET COFFSET) = replace matches to REGEXP with REP in a field.
  (field2num &optional ROFFSET COFFSET) = read a field as a number and return it.
  (changenumber FUNC &optional roffset coffset noprompt) = apply FUNC to the number in a field and replace with the result.
+ (getdate &optional ROFFSET COFFSET) = Get org timestamp of date in relative field or return nil if none.
+ (convertdate &optional OUTFMT ROFFSET COFFSET NOPROMPT &rest PATTERNS) = Convert date in relative field to different format 
+  if it contains one, otherwise return nil.
  (flatten NROWS NCOLS FUNC REPS) = a wrapper around `org-table-flatten-columns'.
  (hline-p ROFFSET) = test if the row at ROFFSET rows beneath the current one, counting hlines, is an hline (horizontal line).
  (addhline ROFFSET) = insert a horizontal line underneath current line + ROFFSET (returns non-nil)
+ (removeline ROFFSET) = Remove a line (horizontal or data) below the row in position (current row + ROFFSET).
  (movecell DIR &optional ROFFSET COFFSET) = Swap current cell with neighbouring cell in direction DIR ('up/'down/'left/'right)
  (countcells DIR ROFFSET COFFSET &rest REGEXS) = moving in direction DIR (up/down/left/right) from a given cell offset,
   return a list containing counts of sequential matches to the 1st regexp, followed by the 2nd regexp, etc.
