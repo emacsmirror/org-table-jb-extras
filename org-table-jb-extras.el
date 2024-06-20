@@ -825,7 +825,8 @@ not used."
 
 ;; TODO: org-table-reformat: user chooses from a collection of preset options which
 ;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
-;; and the width of the table, etc.
+;; and the width of the table, etc. Could also select to insert a tablefilter dynamic block before/after the table,
+;; and add a #+NAME line
 
 ;;;###autoload
 ;; simple-call-tree-info: CHECK

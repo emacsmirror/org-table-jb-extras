@@ -150,7 +150,10 @@ Jump sequences allow different jump conditions to be used in sequence. They can 
  - (A -> (B -> C) -> D) results in A,B,D,A,C,D,A,B,D,etc.
  - (A -> (B -> (C -> D)) -> E) results in A,B,E,A,C,E,A,B,E,A,D,E,A,B,E,etc.
 
-Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next* and then immediately backwards using *org-table-jump-prev* you will visit the exact same cells in reverse (which might not happen if we simply reversed the direction and sequence order). However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
+Jump sequences also keep a track of the history of visited cells so that if you move forward through a sequence using *org-table-jump-next*
+and then immediately backwards using *org-table-jump-prev* you will visit the exact same cells in reverse (which might not happen if we simply
+reversed the direction and order of jump conditions).
+However if you move to a different cell in between *org-table-jump-next* & *org-table-jump-prev* the history will be deleted.
 *** More advanced jump conditions
 Jump conditions may pass information from one jump to the next using the *org-table-jump-state* alist which allows you to perform
 more complex tasks.
