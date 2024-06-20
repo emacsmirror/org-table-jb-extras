@@ -627,8 +627,12 @@ If a cell's content exceeds WIDTH, split it into multiple rows, leaving new cell
 When called interactively or if WIDTH is nil, the user will be prompted for a width.
 If ARG is non-nil, or a prefix arg is used interactively, put a horizontal line between each group of rows 
 corresponding to the same original row."
-  (interactive "nNew column width: \nP")
-  (unless (org-at-table-p) (error "No org-table here"))
+  (interactive (progn (unless (org-at-table-p) (error "No org-table here"))
+		      (list
+		       (read-number (format "New column width (current width = %d): "
+					    (nth (1- (org-table-current-column))
+						 (org-table-get-column-widths))))
+		       current-prefix-arg)))
   (let* ((curcol (org-table-current-column))
          (table (org-table-to-lisp))
 	 (curline (org-table-current-line))
