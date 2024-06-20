@@ -55,7 +55,7 @@ lines), *matchfield* (match a field against a regexp), *countcells* (count neigh
 and also functions to alter the table, e.g. *setfield* (change a field), *replace-in-field* (replace substring of field)
 *convertdate* (change the format of a date string in field), *flatten* (combine cells), etc.
 
-Example:
+Example of jump condition:
 #+BEGIN_SRC emacs-lisp 
 ("foo" & ! ("bar" 1) | (> (sumcounts 'down 0 0 "\\S-" "^\\s-*$") 5))
 #+END_SRC
@@ -72,7 +72,7 @@ keys, between 1 & 9, that you want to assign to.
 Items coming after a digit, say N, in that list, and before any subsequent digit or the end of the list, will be used as the jump condition for any numeric prefix that ends with the digit N.
 The other digits of the prefix will be used as the repetition count, so e.g. a prefix of C-123 will jump 12 times using the jump condition assigned to 3. The digit 0 is used to define the jump condition when no prefix key is used.
 
-Example: 
+Example of jump conditions assigned to prefix keys: 
 #+BEGIN_SRC emacs-lisp 
 (0 :empty 1 :nonempty :hline-below 2 :empty -> :nonempty :hline-above)
 #+END_SRC
@@ -88,6 +88,25 @@ Alternatively you can store table specific jump conditions at the bottom of a ta
 This line should come directly after the table and any *#+TBLFM:* lines, and may be either the condition alone, or a cons cell
 whose car is a direction (see below) and whose cdr is a condition.
 *** Table manipulation examples
+The following jump condition example removes a horizontal line from the table each time *org-table-jump-next* is executed.
+#+BEGIN_SRC emacs-lisp
+  (:hline-below (removeline))
+#+END_SRC
+If you want to remove all hlines in one step, you need to alter the jump condition slightly so that it always returns nil,
+and hence continues searching after removing an hline:
+#+BEGIN_SRC emacs-lisp
+  (:hline-below (and (removeline) nil))
+#+END_SRC
+When applied to the following table:
+| a | b |
+|---+---|
+| 1 | 2 |
+|---+---|
+
+You should get this:
+| a | b |
+| 1 | 2 |
+
 The following jump condition will flatten cells to the right of empty ones, and then put a horizontal line under them.
 #+BEGIN_SRC emacs-lisp
 ("\\S-" & ("\\S-" 0 -1) & ("^\\s-*$" 1 -1) & (flatten (1+ (sumcounts 'down 1 -1 "^\\s-*$")) 1) & (addhline))
