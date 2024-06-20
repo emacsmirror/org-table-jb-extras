@@ -674,12 +674,12 @@ if this is nil then it will be calculated using `org-table-to-lisp'."
 ;;;###autoload
 (when (fboundp 'run-ampl-async)
   ;; simple-call-tree-info: CHECK 
-  (defun org-table-narrow (width &optional arg fixedcols)
+  (defun org-table-narrow (width &optional hlines fixedcols)
     "Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 FIXEDCOLS should be a list of indices of the columns that shouldn't be narrowed (starting at 0).
 New cells added beneath those that don't need to be split will be left empty.
-If ARG is non-nil, or if a prefix arg is used when called interactively, then put horizontal lines between
-sets of rows in the new table corresponding with rows in the original table."
+If HLINES is non-nil, or if the user presses y at the prompt when called interactively, then put horizontal 
+lines between sets of rows in the new table corresponding with rows in the original table."
     (interactive (let* ((tblstart (org-table-begin))
 			(lineend (save-excursion (goto-char tblstart) (line-end-position)))
 			(numcols 0)
@@ -693,7 +693,7 @@ sets of rows in the new table corresponding with rows in the original table."
 		   (list
 		    (read-number (format "New table width (current width = %s): "
 					 (- lineend tblstart)))
-		    current-prefix-arg
+		    (y-or-n-p "Add horizontal lines?")
 		    (progn (while (not (string-match "^[0-9 ]*$" str))
 			     (setq str
 				   (read-string
@@ -756,7 +756,7 @@ sets of rows in the new table corresponding with rows in the original table."
 			     (number-sequence 0 (1- nrows))))
 	(delete-region startpos endpos)
 	(goto-char startpos)
-	(dolist (row (apply 'append (if arg (-interpose '(hline) newrows) newrows)))
+	(dolist (row (apply 'append (if hlines (-interpose '(hline) newrows) newrows)))
 	  (if (eq row 'hline)
 	      (insert "|-\n")
 	    (insert "| " (mapconcat 'identity row " | ") " |\n")))
