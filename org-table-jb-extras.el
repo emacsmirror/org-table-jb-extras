@@ -1230,7 +1230,7 @@ If the tables have different numbers of rows then extra cells will be added to t
 to fill the gaps. These extra cells will be filled with the empty string by default, or you can supply a different
 padding string with the optional PADDING arg.
 hlines will be removed from the tables before joining them."
-  (let* ((tbls (mapcar (cur 'delq 'hline) (delq nil tbls)))
+  (let* ((tbls (mapcar (apply-partially 'delq 'hline) (delq nil tbls)))
 	 (maxrows (-max (mapcar 'length tbls))))
     (loop for n from 0 to (1- maxrows)
 	  collect (loop for tbl in tbls
@@ -1244,7 +1244,7 @@ If the tables have different numbers of columns then extra cells will be added t
 rows to fill the gaps. These extra cells will be filled with the empty string by default, or you can supply
 a different padding string with the optional PADDING arg.
 hlines will be removed from the tables before joining them."
-  (let* ((tbls (mapcar (cur 'delq 'hline) (delq nil tbls)))
+  (let* ((tbls (mapcar (apply-partially 'delq 'hline) (delq nil tbls)))
 	 (widths (mapcar 'org-table-ncols tbls))
 	 (maxwidth (-max widths)))
     (loop for tbl in tbls
@@ -1410,11 +1410,10 @@ is a number greater than 1000, returning just columns 2 & 3:
 Return the rows among the first 100 which match the word \"shopping\" in column 3 (note that c3 is or'ed with \"\" so
 that rows in which c3 is empty dont cause an error):
 
-#+BEGIN: tablefilter :tblname \"account\" :filter (string-match \"shopping\" (or c3 \"\")) :rows ((1 100))
-"
+#+BEGIN: tablefilter :tblname \"account\" :filter (string-match \"shopping\" (or c3 \"\")) :rows ((1 100))"
   (destructuring-bind
       (tblnames tblname namescol noerrors noerror cols rows filter)
-      (mapcar (cur 'plist-get (org-table-inherit-params params))
+      (mapcar (apply-partially 'plist-get (org-table-inherit-params params))
               '(:tblnames :tblname :namescol :noerrors :noerror :cols :rows :filter))
     (setq tblnames (or tblnames tblname) noerrors (or noerrors noerror))
     (org-table-insert
