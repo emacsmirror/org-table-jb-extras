@@ -683,18 +683,21 @@ sets of rows in the new table corresponding with rows in the original table."
 			(hist (progn (save-excursion (goto-char tblstart)
 						     (while (search-forward "|" lineend t)
 						       (setq numcols (1+ numcols))))
-				     (cons (mapconcat 'number-to-string (number-sequence 0 (- numcols 2)) " ")
+				     (cons (mapconcat 'number-to-string (number-sequence 1 (- numcols 1)) " ")
 					   minibuffer-history)))
-			(str (read-string "Indices of fixed columns (press <up> to see full list, default = None): "
+			(str (read-string "Fixed columns (space separated, press <up> to see full list, default = None): "
 					  nil 'hist)))
 		   (list
 		    (read-number (format "New table width (current width = %s): "
 					 (- lineend tblstart)))
 		    current-prefix-arg
 		    (progn (while (not (string-match "^[0-9 ]*$" str))
-			     (setq str (read-string "Indices of fixed columns (space separated): ")))
-			   (mapcar 'string-to-number
-				   (cl-remove "" (split-string str "\\s-+") :test 'equal))))))
+			     (setq str
+				   (read-string
+				    "Fixed columns (space separated, press <up> to see full list, default = None): "
+				    nil 'hist)))
+			   (--map (1- (string-to-number it))
+				  (cl-remove "" (split-string str "\\s-+") :test 'equal))))))
     (unless (org-at-table-p) (error "No org-table here"))
     (let* ((table (org-table-to-lisp))
 	   (nrows (length table))
