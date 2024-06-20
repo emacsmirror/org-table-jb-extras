@@ -621,18 +621,17 @@ will be cleared."
 
 ;;;###autoload
 ;; simple-call-tree-info: DONE  
-(defun org-table-narrow-column (width &optional arg)
+(defun org-table-narrow-column (width &optional hlines)
   "Split the current column of an org-mode table to be WIDTH characters wide.
 If a cell's content exceeds WIDTH, split it into multiple rows, leaving new cells in other columns empty.
-When called interactively or if WIDTH is nil, the user will be prompted for a width.
-If ARG is non-nil, or a prefix arg is used interactively, put a horizontal line between each group of rows 
-corresponding to the same original row."
+If HLINES is non-nil put a horizontal line between each group of rows corresponding to the same original row.
+When called interactively or if WIDTH is nil, the user will be prompted for a width and hlines."
   (interactive (progn (unless (org-at-table-p) (error "No org-table here"))
 		      (list
 		       (read-number (format "New column width (current width = %d): "
 					    (nth (1- (org-table-current-column))
 						 (org-table-get-column-widths))))
-		       current-prefix-arg)))
+		       (y-or-n-p "Add horizontal lines?"))))
   (let* ((curcol (org-table-current-column))
          (table (org-table-to-lisp))
 	 (curline (org-table-current-line))
@@ -651,7 +650,7 @@ corresponding to the same original row."
           (end (org-table-end)))
       (delete-region start end)
       (goto-char start)
-      (dolist (row (apply 'append (if arg (-interpose '(hline) newrows) newrows)))
+      (dolist (row (apply 'append (if hlines (-interpose '(hline) newrows) newrows)))
         (if (eq row 'hline)
             (insert "|-\n")
           (insert "| " (mapconcat 'identity row " | ") " |\n")))
