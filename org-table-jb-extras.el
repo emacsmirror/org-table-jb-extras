@@ -73,6 +73,8 @@
 ;;   Narrow the entire org-mode table, apart from FIXEDCOLS, to be within WIDTH characters by adding new rows.
 ;;  `org-table-fill-empty-cells'
 ;;   Fill empty cells in current column of org-table at point by splitting non-empty cells above them.
+;;  `org-table-wrap-table'
+;;   Insert string BEFORE table at point, and another string AFTER.
 ;;  `org-table-query-dimension'
 ;;   Print and return the number of columns, data lines, cells, hlines, height & width (in chars) of org-table at point.
 ;;  `org-table-move-cell'
@@ -106,6 +108,8 @@
 ;;    List of java style date-time matching patterns as accepted by `datetime-matching-regexp' and related functions.
 ;;  `org-table-timestamp-format'
 ;;    Default format for timestamps output by `org-table-convert-timestamp'.
+;;  `org-table-wrap-presets'
+;;    Preset BEFORE and AFTER strings/functions for ‘org-table-wrap-table’.
 ;;
 ;; All of the above can be customized by:
 ;;      M-x customize-group RET org-table RET
