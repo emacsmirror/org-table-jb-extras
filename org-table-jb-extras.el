@@ -535,10 +535,13 @@ Return value is the sum of lengths of the text in the newly combined fields."
 					("fit curve to cols" .
 					 (lambda (lst) (org-table-to-calc (org-table-transpose lst) nil)
 					   (calc-curve-fit nil)))
+					("comment out table" . orgtbl-toggle-comment)
+					("insert text before &/or after table" . org-table-wrap-table)
 					("transpose table" . org-table-transpose-table-at-point)
 					("split/join columns (insert/delete vline)" . org-table-insert-or-delete-vline)
 					("join rows/flatten columns" . org-table-flatten-columns)
 					("Toggle display of row/column refs" . org-table-toggle-coordinate-overlays)
+					("Sort lines" . org-table-sort-lines)
 					("Hide/show column" . org-table-toggle-column-width)
 					("Narrow column" . org-table-narrow-column)
 					("Narrow table" . org-table-narrow)
@@ -565,13 +568,7 @@ If the function takes a single argument then pass in a subtable list obtained fr
 If in addition, the name of the action contains the word \"kill\" then the cells in the selected columns/region 
 will be cleared."
   (interactive)
-  (let* ((pair (assoc (ido-completing-read "Action: "
-					   (mapcar
-					    (lambda (x)
-					      (concat (car x)
-						      (let ((keyseq (where-is-internal (cdr x))))
-							(if keyseq (concat " (" (key-description (car keyseq)) ")")))))
-					    org-table-dispatch-actions))
+  (let* ((pair (assoc (ido-completing-read "Action: " (mapcar 'car org-table-dispatch-actions))
 		      org-table-dispatch-actions))
 	 (func (cdr pair)))
     (if (and (listp func)
@@ -614,7 +611,7 @@ will be cleared."
   (org-table-blank-field))
 
 ;; Useful
-;; simple-call-tree-info: DONE  
+;; simple-call-tree-info: DONE  could also have used `org-wrap' here
 (defsubst split-string-by-width (width str)
   "Split a string STR into substrings of length at most WIDTH without breaking words."
   (split-string (s-word-wrap width str) "\n"))
@@ -823,10 +820,71 @@ not used."
 	(org-table-goto-column col))
       (org-table-align))))
 
-;; TODO: org-table-reformat: user chooses from a collection of preset options which
-;; determines latex/html/org-attribs code to put before & after the table (e.g. for adjusting font size & margins)
-;; and the width of the table, etc. Could also select to insert a tablefilter dynamic block before/after the table,
-;; and add a #+NAME line
+(defcustom org-table-wrap-presets nil
+  "Preset BEFORE and AFTER strings/functions for `org-table-wrap-table'.
+Each element should be a list whose 1st element is a string containing a description, and whose 2nd & 3rd elements
+are strings or functions which return a string to be place before & after the table respectively, or nil to indicate
+that nothing should be inserted.
+Where a function is used, that function will be passed a single argument; a property list containing the following
+items:"
+  :group 'org-table
+  :type '(repeat
+	  (list
+	   (string :tag "Description")
+	   (choice :tag "Before"
+		   (string :help-echo "String to insert directly above the table.")
+		   (function
+		    :help-echo
+		    "Function which takes a plist argument, and returns a string to insert directly above the table.")
+		   (const :tag "None" nil))
+	   (choice :tag "After"
+		   (string :help-echo "String to insert directly below the table.")
+		   (function
+		    :help-echo
+		    "Function which takes a plist argument, and returns a string to insert directly below the table.")
+		   (const :tag "None" nil)))))
+
+;; simple-call-tree-info: DONE To persist across emacs restarts see `session-globals-include' or `session-globals-regexp'.
+(defvar org-table-wrap-history nil "History list for `org-table-wrap-table' prompt.")
+
+;;;###autoload
+;; simple-call-tree-info: CHECK
+(defun org-table-wrap-table (before after)
+  "Insert string BEFORE table at point, and another string AFTER.
+When called interactively prompt for preset strings, or let the user enter them manually.
+BEFORE or AFTER may also be functions which should return a string when called with no argument."
+  (interactive (let ((name (completing-read
+			    "Preset table wrapper: "
+			    (cons "Enter manually" (mapcar 'car org-table-wrap-presets)))))
+		 (if (equal name "Enter manually")
+		     (list (read-string "String to insert before table: "
+					nil 'org-table-wrap-history)
+			   (read-string "String to insert after table: "
+					nil 'org-table-wrap-history))
+		   (cdr (assoc name org-table-wrap-presets)))))
+  (unless (org-at-table-p) (error "No org-table here"))
+  (save-excursion
+    (goto-char (org-table-begin))
+    (when before
+      ;; check for #+[DOCTYPE] values before table
+      (while (looking-back "[ \t]*#\\+[a-zA-Z_]+:.*\n")
+	(re-search-backward "#\\+\\([a-zA-Z_]+\\):\\(.*\\)"))
+      ;; insert BEFORE arg before table attributes
+      (insert (concat (cl-typecase before
+			(function (funcall before))
+			(string before)
+			(t (error "Invalid argument: %S" before))) "\n"))))
+  (save-excursion
+    (when after
+      (goto-char (org-table-end))
+      ;; check for #+[DOCTYPE] values after table
+      (while (looking-at "[ \t]*#\\+\\([a-zA-Z_]+\\):\\(.*\\)\n?")
+	(forward-line 1))
+      ;; insert AFTER arg after table attributes
+      (insert (concat (cl-typecase after
+			(function (funcall after))
+			(string after)
+			(t (error "Invalid argument: %S" after))) "\n")))))
 
 ;;;###autoload
 ;; simple-call-tree-info: CHECK
@@ -1560,9 +1618,9 @@ The car should be a symbol to specify the direction of traversal across the org-
 
 The cdr can take the following form:\n\n"  org-table-jump-documentation))
 
-;; simple-call-tree-info: DONE
+;; simple-call-tree-info: DONE To persist between emacs resets see `session-globals-include' or `session-globals-regexp'.
 (defvar org-table-jump-condition-history nil
-  "History list of `org-table-set-jump-condition'")
+  "History list of `org-table-set-jump-condition'.")
 
 (defvar org-table-jump-state nil
   "State variable (alist) for use by `org-table-jump-next'.")
@@ -1618,12 +1676,7 @@ The SEXP may make use of functions defined in `org-table-filter-function-binding
   "Display a message in the minibuffer showing the current jump condition."
   (interactive)
   (let ((msg "org-table-jump set to direction = %s, condition = %s"))
-    (message msg
-	     (car org-table-jump-condition)
-	     (org-table-describe-jump-condition (cdr org-table-jump-condition)
-						(- (frame-text-cols)
-						   (length msg)
-						   10)))))
+    (message msg (car org-table-jump-condition) (cdr org-table-jump-condition))))
 
 ;; simple-call-tree-info: TODO make selection using one-key or make-help-screen instead of completing-read?
 (defun org-table-set-jump-condition (condition)
