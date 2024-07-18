@@ -59,39 +59,38 @@ TODO: this code could be simplified by making use of newly added features to org
 
 #+NAME: set-jump-condition	
 #+BEGIN_SRC emacs-lisp :results none :var nextstep='nil :var prevstep='t :var direction='right 
-   (setq org-table-jump-state nil
-	 org-table-jump-condition
-	 (cons direction
-	       `(let* ((n (string-to-number startfield))
-		       (startpos (cons startline startcol))
-		       (newpos (cons currentline currentcol))
-		       ;; path contains fields travelled forwards from initial field to current field
-		       (path (or (getvar 'path) (setvar 'path (list startpos))))
-		       (pathlen (length path))
-		       ;; visited contains fields we've already visited, that are not on the current path
-		       (visited (getvar 'visited)))
-		  ;; store values with already visited cells for recording things such as parity
-		  (cl-flet ((getvisited (x) (mapcar 'cdr (--filter (equal x (car it)) visited)))
-			    (addvisited (x v) (pushvar (cons x v) 'visited)))
-		    (if (= n 0)
-			(not (message "SOLUTION = %s" (reverse path)))
-		      (if (< steps 0)
-			  ;; go back to previous field in path
-			  ;; (in this case we don't care about currentline & currentpos, and we always accept)
-			  (let ((newpath (cdr path)))
-			    (and
-			     (equal newpos (car newpath)) ;match with previous position in path
-			     (if (null newpath) (error "Empty path") t)
-			     (setvar 'path newpath) ; this must come after the match
-			     (setq pathlen (1- pathlen))
-			     ,prevstep    ; futher problem specific code 
-			     (or (org-table-align) t)
-			     (message "Path: %s" (reverse newpath))))
-			;; check field position
-			(if ,nextstep
-			    (let ((newpath (pushvar newpos 'path))) 
-			      (org-table-align)
-			      (message "Path: %s" (reverse newpath))))))))))
+  (setq org-table-jump-state nil
+	org-table-jump-condition
+	(cons direction
+	      `(let* ((startpos (cons startline startcol))
+		      (newpos (cons currentline currentcol))
+		      ;; path contains fields travelled forwards from initial field to current field
+		      (path (or (getvar 'path) (setvar 'path (list startpos))))
+		      (pathlen (length path))
+		      ;; visited contains fields we've already visited, that are not on the current path
+		      (visited (getvar 'visited)))
+		 ;; store values with already visited cells for recording things such as parity
+		 (cl-flet ((getvisited (x) (mapcar 'cdr (--filter (equal x (car it)) visited)))
+			   (addvisited (x v) (pushvar (cons x v) 'visited)))
+		   (if (= (string-to-number startfield) 0)
+		       (not (message "SOLUTION = %s" (reverse path)))
+		     (if (< steps 0)
+			 ;; go back to previous field in path
+			 ;; (in this case we don't care about currentline & currentpos, and we always accept)
+			 (let ((newpath (cdr path)))
+			   (and
+			    (equal newpos (car newpath)) ;match with previous position in path
+			    (if (null newpath) (error "Empty path") t)
+			    (setvar 'path newpath) ; this must come after the match
+			    (setq pathlen (1- pathlen))
+			    (org-table-parse-jump-condition ,prevstep)    ; futher problem specific code 
+			    (or (org-table-align) t)
+			    (message "Path: %s" (reverse newpath))))
+		       ;; check field position
+		       (if ,nextstep
+			   (let ((newpath (pushvar newpos 'path))) 
+			     (org-table-align)
+			     (message "Path: %s" (reverse newpath))))))))))
 #+END_SRC
 
 * Puzzles
