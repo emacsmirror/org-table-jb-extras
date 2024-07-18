@@ -105,10 +105,9 @@ Evaluate the following code block by pressing *C-c C-c* on the following line be
 #+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*)))
   (cons
    '(addvisited startpos t)
-   '(and (not (getvisited newpos))
-	 (not (member newpos path))
-	 (member (abs (- currentcol startcol)) (list 0 n))
-	 (member (abs (- currentline startline)) (list 0 n))))
+   '( ! (getvisited newpos) ! (member newpos path)
+	(member (abs (- currentcol startcol)) (list 0 n))
+	(member (abs (- currentline startline)) (list 0 n))))
 #+END_SRC
 
 #+RESULTS:
@@ -149,12 +148,9 @@ Evaluate the following code block by pressing *C-c C-c* on the following line be
 #+BEGIN_SRC emacs-lisp :results verbatim :post set-jump-condition(direction='down,prevstep=(car (read *this*)),nextstep=(cdr (read *this*)))
   (cons
    '(addvisited startpos t)
-   '(and (not (getvisited newpos))
-	 (not (member newpos path))
-	 (or (and (= currentline startline)
-		  (= (abs (- currentcol startcol)) n))
-	     (and (= currentcol startcol)
-		  (= (abs (- currentline startline)) n)))))
+   '(! (getvisited newpos) ! (member newpos path)
+       (((= currentline startline) & (= (abs (- currentcol startcol)) n)) |
+	((= currentcol startcol) & (= (abs (- currentline startline)) n)))))
 #+END_SRC
 
 #+RESULTS:
