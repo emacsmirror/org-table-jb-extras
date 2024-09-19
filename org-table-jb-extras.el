@@ -2170,14 +2170,15 @@ current line."
 (defun org-table-jump-ctrl-c-ctrl-c nil
   "Function run when `C-c C-c' is pressed and point is on a #+TBLJMP line."
   (let ((pair (org-table-get-stored-jump-condition t)))
-    (if (or (not (consp pair))
-	    (not (memq (car pair) '(left right up down))))
-	(progn (setcar org-table-jump-condition
-		       (or (car org-table-jump-condition) 'down))
-	       (setcdr org-table-jump-condition pair))
-      (setcar org-table-jump-condition (car pair))
-      (setcdr org-table-jump-condition (cdr pair)))
-    (org-table-show-jump-condition)))
+    (when pair
+      (if (or (not (consp pair))
+	      (not (memq (car pair) '(left right up down))))
+	  (progn (setcar org-table-jump-condition
+			 (or (car org-table-jump-condition) 'down))
+		 (setcdr org-table-jump-condition pair))
+	(setcar org-table-jump-condition (car pair))
+	(setcdr org-table-jump-condition (cdr pair)))
+      (org-table-show-jump-condition))))
 
 (add-hook 'org-ctrl-c-ctrl-c-hook 'org-table-jump-ctrl-c-ctrl-c)
 
