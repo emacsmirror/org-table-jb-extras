@@ -1739,11 +1739,11 @@ The jump condition must take one of the following forms:\n\n"))
 					     "Condition: "
 					     (when (eq condition 'edit)
 					       (prin1-to-string
-						(cdr (assoc (completing-read
-							     "Preset: "
-							     (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
-									org-table-jump-condition-presets))
-							    org-table-jump-condition-presets))))
+						(cdr (assoc-string (completing-read
+								    "Preset: "
+								    (remove-if (lambda (x) (memq (cdr x) '(edit enter)))
+									       org-table-jump-condition-presets))
+								   org-table-jump-condition-presets))))
 					     'org-table-jump-condition-history))
 				 (delete-windows-on helpbuf)
 				 (bury-buffer helpbuf)
